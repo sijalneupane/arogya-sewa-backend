@@ -1,0 +1,118 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment files
+.env
+.env.*
+*.env
+
+# FastAPI + Uvicorn logs
+*.log
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype
+.pytype/
+
+# IDE settings
+.vscode/
+.idea/
+.history/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build / distribution
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Database / cache
+*.db
+*.sqlite3
+__pypackages__/
+
+# Static / media (optional for FastAPI)
+staticfiles/
+media/
+
+# Docker related
+docker-compose.override.yml
+*.pid
+*.sock
+*.pid.lock
+# Ignore local Docker build cache and volumes
+**/.docker/
+**/docker/volumes/
+**/docker/data/
+**/docker/logs/
+
+# Dockerfile builds
+*.tar
+*.img
+*.bak
+
+# Ignore local Docker build artifacts
+**/tmp/
+**/cache/
+
+# Optional if using Poetry
+poetry.lock
+
+# Optional if using Pyenv
+.python-version

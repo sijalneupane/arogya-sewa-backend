@@ -1,0 +1,16 @@
+[tool.ruff]
+# General settings
+line-length = 88
+target-version = "py313"
+fix = true
+
+# Linting rules
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]  # optional: ignore line length if you prefer Ruff's formatter
+
+# Enable both linting + formatting
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
