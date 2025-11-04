@@ -10,6 +10,5 @@ DB_NAME = os.getenv("POSTGRES_DB", "fastapi_db")
 
 DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, connect_args={"options": "-c search_path=public"})
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-

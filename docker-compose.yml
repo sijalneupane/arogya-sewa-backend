@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-myuser}      # 👈 Use POSTGRES_USER from .env or default to 'myuser'
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypass}  # 👈 Use POSTGRES_PASSWORD from .env or default to 'mypass'
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql
 

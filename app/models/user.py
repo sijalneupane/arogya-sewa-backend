@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String  # type: ignore
 
-from app.db.database import Base
+from app.models.base import Base
 
 
 class User(Base):

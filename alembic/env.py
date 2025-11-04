@@ -2,7 +2,7 @@
 import sys
 from pathlib import Path
 
-from app.models import base  # 👈 import your SQLAlchemy models
+from app.models.base import Base  # 👈 import your SQLAlchemy models
 
 # Add app to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -25,7 +25,7 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
-target_metadata = base.Base.metadata
+target_metadata = Base.metadata
 
 # ... rest remains mostly the same
 
@@ -66,6 +66,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
+    print("Tables in metadata:", Base.metadata.tables.keys())
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
