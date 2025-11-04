@@ -1,5 +1,5 @@
 # Dockerfile
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
@@ -7,6 +7,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
+    libpq-dev \
+    libc-dev \
     && rm -rf /var/lib/apt/lists/*
     
 RUN git config --global user.name "sijalneupane" \
