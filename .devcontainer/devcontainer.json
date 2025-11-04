@@ -1,0 +1,24 @@
+{
+  "name": "FastAPI Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "web",
+  "workspaceFolder": "/app",
+  "customizations": {
+    "vscode": {
+      "extensions": ["charliermarsh.ruff", "ms-python.python"],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.envFile": "${workspaceFolder}/.env", // 👈 Key line!
+        "python.analysis.typeCheckingMode": "basic",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "ruff.lint.enable": true,
+        "ruff.format.enable": true
+        // "ruff.lint.run": "onType"
+      }
+    }
+  },
+  "forwardPorts": [8000]
+}

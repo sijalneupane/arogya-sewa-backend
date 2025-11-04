@@ -1,3 +1,4 @@
+# app/config.py (or wherever your Settings class is)
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -7,17 +8,26 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 
-    # DATABASE_URL: str
-       # Security settings
-    SECRET_KEY: str = Field(..., env="SECRET_KEY", min_length=32, description="Secret key for JWT token generation")
-
+    SECRET_KEY: str = Field(..., min_length=32)
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 365
+
+    # PostgreSQL settings (example)
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    DB_HOST: str = "db"  # matches service name in docker-compose
+
+    @property
+    def DATABASE_URL(self) -> str:
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.DB_HOST}:5432/{self.POSTGRES_DB}"
+
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
+        # ✅ DO NOT include env_file=".env"
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
+        # Pydantic will read from os.environ — which Docker already populated!
     )
 
-settings = Settings()
+
+settings = Settings() # type: ignore
