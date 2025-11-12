@@ -1,4 +1,4 @@
-
+# use  direct connection with either server or localhost for database instead of using image.
 services:
   db:
     image: postgres:18

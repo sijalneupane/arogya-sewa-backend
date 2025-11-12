@@ -18,9 +18,15 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str
     DB_HOST: str = "db"  # matches service name in docker-compose
 
+    # --- SYNC engine (for Alembic and scripts)
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.DB_HOST}:5432/{self.POSTGRES_DB}"
+
+    # --- ASYNC engine (for FastAPI async endpoints)
+    @property
+    def ASYNC_DATABASE_URL(self) -> str:
+        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.DB_HOST}:5432/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(
         # ✅ DO NOT include env_file=".env"
@@ -30,4 +36,4 @@ class Settings(BaseSettings):
     )
 
 
-settings = Settings() # type: ignore
+settings = Settings()  # type: ignore

@@ -1,11 +1,12 @@
+from contextlib import asynccontextmanager
 
-# Dependency
-from app.db.database import SessionLocal
+from app.db.database import AsyncSessionLocal
 
 
-def get_db():
-    db = SessionLocal()
+@asynccontextmanager
+async def get_session():
+    session = AsyncSessionLocal()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        await session.close()

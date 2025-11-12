@@ -17,9 +17,9 @@ RUN git config --global user.name "sijalneupane" \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code
+# Copy source code, 
 COPY . .
-
+# we can also use entry point
 EXPOSE 8000
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
