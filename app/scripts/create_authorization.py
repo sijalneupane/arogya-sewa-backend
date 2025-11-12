@@ -112,3 +112,10 @@ async def _create_permissions(
     authorizations = permission_fn(role)
     session.add_all(authorizations)
     return authorizations
+
+
+# Main execution
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(create_authorizations())
