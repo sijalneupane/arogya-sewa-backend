@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Enum, String
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums.role_enum import RoleEnum
@@ -17,7 +18,9 @@ class Role(Base, TimestampMixin):
     __tablename__ = "role"
 
     id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
-    role: Mapped[RoleEnum] = mapped_column(Enum(RoleEnum), nullable=False)
+    role: Mapped[RoleEnum] = mapped_column(
+        SQLEnum(RoleEnum, name="role_enum"), nullable=False
+    )
     description: Mapped[str] = mapped_column(String, nullable=True)
 
     # Use string reference to avoid circular import

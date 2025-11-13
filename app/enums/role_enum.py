@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RoleEnum(str, Enum):
+class RoleEnum(StrEnum):
     SUPER_ADMIN = "super_admin"
     HOSPITAL_ADMIN = "hospital_admin"
     DOCTOR = "doctor"
