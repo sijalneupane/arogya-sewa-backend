@@ -28,12 +28,14 @@ def create_roles_if_not_exist():
         ]
 
         for role_name, role_description in zip(roles, roles_descriptions):
-            existing_role = session.query(Role).filter(Role.role == role_name).first()
+            existing_role = (
+                session.query(Role).filter(Role.role == role_name.value).first()
+            )
 
             if not existing_role:
                 new_role = Role(
                     id=StringUtils.randomAlphaNumeric(8),
-                    role=role_name,
+                    role=role_name.value,
                     description=role_description,
                 )
                 session.add(new_role)
