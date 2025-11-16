@@ -1,4 +1,3 @@
-from os import name
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Enum as SQLEnum
