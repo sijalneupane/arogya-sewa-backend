@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     @property
     def ASYNC_DATABASE_URL(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
+
     model_config = SettingsConfigDict(
         # ✅ DO NOT include env_file=".env"
         case_sensitive=False,
