@@ -1,27 +1,10 @@
 # use  direct connection with either server or localhost for database instead of using image.
 services:
-  db:
-    image: postgres:18
-    restart: on-failure
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}  # 👈 Use POSTGRES_DB from .env or default to 'mydatabase'
-      POSTGRES_USER: ${POSTGRES_USER:-myuser}      # 👈 Use POSTGRES_USER from .env or default to 'myuser'
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypass}  # 👈 Use POSTGRES_PASSWORD from .env or default to 'mypass'
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql
-
   web:
     build: .
     ports:
       - "8000:8000"
     volumes:
       - .:/app
-    depends_on:
-      - db
     env_file:
-      - .env          # 👈 Load .env into the container
-
-volumes:
-  postgres_data:
+      - .env  # 👈 Load .env into the container
