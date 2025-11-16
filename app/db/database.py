@@ -8,12 +8,17 @@ DB_USER = os.getenv("POSTGRES_USER", "postgres")
 DB_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 DB_HOST = os.getenv("DB_HOST", "db")
 DB_NAME = os.getenv("POSTGRES_DB", "fastapi_db")
+DB_PORT = int(os.getenv("DB_PORT", 5432))
 
 # ✅ Async database URL uses asyncpg
-ASYNC_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+ASYNC_DATABASE_URL = (
+    f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 # ✅ Sync database URL uses psycopg2
-SYNC_DATABASE_URL = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+SYNC_DATABASE_URL = (
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 # ------------------ ASYNC ENGINE ------------------
 async_engine = create_async_engine(ASYNC_DATABASE_URL, echo=False, future=True)
