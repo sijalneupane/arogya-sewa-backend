@@ -30,6 +30,8 @@ target_metadata = Base.metadata
 # ==================== ENUM AUTO-DETECTION HOOK ====================
 def _get_enum_values(enum_type):
     """Extract list of .value from Python Enum (StrEnum or regular Enum)"""
+    if enum_type is None:
+        return []
     return [member.value for member in enum_type.__members__.values()]
 
 
@@ -47,34 +49,48 @@ def compare_enums(
     """
     # Only consider SQLAlchemy Enum types that reference a Python enum class
     if not isinstance(local_type, Enum) or not hasattr(local_type, "enum_class"):
-        return False
+        return None  # Return None to let Alembic use default comparison
+
+    # Handle case where enum_class is None
+    if local_type.enum_class is None:
+        return None  # Return None to let Alembic use default comparison
 
     # Remote type from the DB should expose 'enums' (Postgres ENUM); otherwise skip
     if not hasattr(remote_type, "enums"):
-        return False
+        return None  # Return None to let Alembic use default comparison
 
-    py_values = set(_get_enum_values(local_type.enum_class))
-    db_values = set(remote_type.enums)
+    try:
+        py_values = set(_get_enum_values(local_type.enum_class))
+        db_values = set(
+            remote_column.type.enums
+        )  # Use remote_column.type.enums instead of remote_type.enums
 
-    if py_values != db_values:
-        # Optional: log for debugging; derive table/column names if available
-        try:
-            table_name = getattr(local_column, "table", None)
-            table_name = table_name.name if table_name is not None else None
-        except Exception:
-            table_name = None
+        if py_values != db_values:
+            # Optional: log for debugging; derive table/column names if available
+            try:
+                table_name = getattr(local_column, "table", None)
+                table_name = table_name.name if table_name is not None else None
+            except Exception:
+                table_name = None
 
-        col_name = getattr(local_column, "name", None) or getattr(
-            remote_column, "name", None
-        )
+            col_name = getattr(local_column, "name", None) or getattr(
+                remote_column, "name", None
+            )
 
-        print(
-            f"Enum changed: {table_name}.{col_name} | "
-            f"Python: {sorted(py_values)} | DB: {sorted(db_values)}"
-        )
-        return True  # Force migration generation
+            print(
+                f"Enum changed: {table_name}.{col_name} | "
+                f"Python: {sorted(py_values)} | DB: {sorted(db_values)}"
+            )
+            return True  # Force migration generation
 
-    return False
+    except (AttributeError, TypeError) as e:
+        # If there's an error in enum comparison, fall back to default behavior
+        print(f"Enum comparison failed, using default: {e}")
+        return None
+
+    return (
+        None  # Return None to let Alembic use default comparison if no changes detected
+    )
 
 
 # =====================================================================

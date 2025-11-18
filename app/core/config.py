@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = Field(..., min_length=32)
     ACCESS_TOKEN_EXPIRE_DAYS: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 365
-
+    ALGORITHM: str = "HS256"
     # PostgreSQL settings (example)
     POSTGRES_DB: str
     POSTGRES_USER: str
