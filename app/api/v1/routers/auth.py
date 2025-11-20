@@ -13,25 +13,30 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 @router.post("/signup", response_model=UserResponse)
 async def signup(data: UserCreate, db: AsyncSession = Depends(get_db)):
-    try:
-        user = await create_user(db, data.email, data.password)
-        if not user:
-            raise HTTPException(status_code=400, detail="Email already registered")
-        return user
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail="Internal server error" + e.__str__()
-        )
+    # try:
+    return await create_user(db, data.email, data.password, data.name, data.role)
+    #     if not user:
+    #         raise HTTPException(status_code=400, detail="Email already registered")
+    #     return "user"
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=500, detail="Internal server error" + e.__str__()
+    #     )
 
 
 @router.post("/login", response_model=Token)
 async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
-    access, refresh, user = await login_user(db, data.email, data.password)
+    try:
+        access, refresh, user = await login_user(db, data.email, data.password)
 
-    return {
-        "access_token": access,
-        "refresh_token": refresh,
-        "token_type": "bearer",
-    }
+        return {
+            "message": "Login successful",
+            "data": {
+                "accessToken": access,
+                "refreshToken": refresh,
+                "user": user,
+            },
+        }
+
+    except HTTPException as http_exc:
+        raise http_exc
