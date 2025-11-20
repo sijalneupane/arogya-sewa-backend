@@ -1,14 +1,17 @@
 from pydantic import BaseModel, EmailStr
 
+from app.enums.role_enum import RoleEnum
+
 
 class UserCreate(BaseModel):
     email: EmailStr
     name: str
     password: str
+    role: RoleEnum
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
 
 
@@ -19,7 +22,7 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: int
+    id: str
     email: EmailStr
     name: str
     is_active: bool
