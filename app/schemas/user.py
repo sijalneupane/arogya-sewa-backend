@@ -1,6 +1,7 @@
 from pydantic import BaseModel, EmailStr
 
 from app.enums.role_enum import RoleEnum
+from app.schemas.role import RoleNameDesResponse
 
 
 class UserCreate(BaseModel):
@@ -25,7 +26,18 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     name: str
+    role: RoleNameDesResponse
     is_active: bool
 
     class Config:
         from_attributes = True
+
+
+class UserListResponse(BaseModel):
+    message: str | None = "User list fetched successfully"
+    data: list[UserResponse] | None
+
+
+class UserByIdResponse(BaseModel):
+    message: str | None = "User fetched successfully"
+    data: UserResponse | None
