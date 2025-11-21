@@ -6,13 +6,10 @@ WORKDIR /app
 # Install system dependencies: Git + build tools (if needed for packages like psycopg2)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    git \
     libpq-dev \
     libc-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git config --global user.email "sijalneupane5@gmail.com" \
-    && git config --global user.name "sijalneupane"
 # Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
