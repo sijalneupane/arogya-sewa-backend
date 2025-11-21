@@ -7,6 +7,7 @@ from app.core.security import pwd_context  ## type: ignore
 from app.enums.role_enum import RoleEnum
 from app.models.role import Role
 from app.models.user import User
+from app.schemas.user import UserByIdResponse, UserListResponse, UserResponse
 from app.utils.string_utils import StringUtils
 
 
@@ -44,3 +45,27 @@ async def get_user_by_email(db: AsyncSession, email: str):
         select(User).options(selectinload(User.role)).where(User.email == email)
     )
     return result.scalar_one_or_none()
+
+
+async def get_user_list(db: AsyncSession):
+    try:
+        result = await db.execute(select(User).options(selectinload(User.role)))
+        userresult = result.scalars().all()
+        reusltList = [UserResponse.model_validate(user) for user in userresult]
+        return UserListResponse(data=reusltList)
+    except Exception or HTTPException as e:
+        raise e
+
+
+async def get_user_by_id(db: AsyncSession, user_id: str):
+    try:
+        result = await db.execute(
+            select(User).options(selectinload(User.role)).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_response = UserResponse.model_validate(user)
+        return UserByIdResponse(data=user_response)
+    except Exception or HTTPException as e:
+        raise e
