@@ -6,6 +6,7 @@ from app.core.security import (  # type: ignore
     create_refresh_token,
     verify_password,
 )
+from app.schemas.jwt_payload import JwtPayload
 from app.services.user_service import get_user_by_email
 
 
@@ -24,8 +25,13 @@ async def login_user(db: AsyncSession, email: str, password: str):
         if not user:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        access = create_access_token({"sub": user.id, "role": user.role.role})
+        payload = JwtPayload(sub=user.id, name=user.name, role=user.role.role)
+        print(
+            f"Creating JWT with payload: sub={user.id}, name={user.name}, role={user.role.role}"
+        )
+        access = create_access_token(payload)
         refresh = create_refresh_token({"sub": user.id})
+
+        return access, refresh, user
     except HTTPException as e:
         raise e
-    return access, refresh, user
