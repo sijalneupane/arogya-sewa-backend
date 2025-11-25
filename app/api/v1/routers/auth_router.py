@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.db import get_db
-from app.schemas.token import Token  # type: ignore
+from app.schemas.login_response import LoginData, LoginResponse  # type: ignore
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.user import UserLogin as LoginSchema
 from app.services.auth_service import login_user  ## type: ignore
@@ -24,19 +24,18 @@ async def signup(data: UserCreate, db: AsyncSession = Depends(get_db)):
     #     )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=LoginResponse)
 async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
     try:
         access, refresh, user = await login_user(db, data.email, data.password)
 
-        return {
-            "message": "Login successful",
-            "data": {
-                "accessToken": access,
-                "refreshToken": refresh,
-                "user": user,
-            },
-        }
+        return LoginResponse(
+            data=LoginData(access_token=access, refresh_token=refresh, user=user)
+        )
 
     except HTTPException as http_exc:
         raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Internal server error" + e.__str__()
+        )
