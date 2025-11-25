@@ -1,2 +1,39 @@
+# Keep Docker and devcontainer files in the build context
+!Dockerfile
+!docker-compose*.yml
+!.devcontainer
+!.devcontainer/**
+!devcontainer.json
+
+# Ignore local environment and VCS
 .env
+.env.* 
 .git
+.gitignore
+
+# Node dependencies and logs
+node_modules/
+npm-debug.log
+yarn-error.log
+*.log
+.pnpm-store/
+
+# Build / test output
+dist/
+build/
+coverage/
+tmp/
+out/
+*.tsbuildinfo
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Misc local caches / secrets
+*.local
+*.secret
+*.pem
