@@ -5,14 +5,17 @@
   "workspaceFolder": "/app",
   "customizations": {
     "vscode": {
-      "extensions": ["charliermarsh.ruff", "ms-python.python", "ms-python.vscode-pylance","charliermarsh.ruff"],
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.vscode-pylance"
+      ],
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.envFile": "${workspaceFolder}/.env", // 👈 Key line!
         "python.analysis.autoSearchPaths": true,
         "python.analysis.autoImportCompletions": true,
         "python.analysis.typeCheckingMode": "basic",
-        "python.analysis.extraPaths":["./app"],
         "editor.formatOnSave": true,
         "[python]": {
           "editor.defaultFormatter": "charliermarsh.ruff"

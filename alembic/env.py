@@ -2,8 +2,6 @@
 import sys
 from pathlib import Path
 
-from app.models.base import Base  # Import your SQLAlchemy models
-
 # Add app to Python path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -12,9 +10,11 @@ from logging.config import fileConfig
 from sqlalchemy import Enum, engine_from_config, pool
 
 from alembic import context
+
+# Import all models to ensure they're registered with SQLAlchemy
+from app.common.models import Base
 from app.core.config import settings
 
-# this is the Alembic Config object
 config = context.config
 
 # Set the DB URL from your settings

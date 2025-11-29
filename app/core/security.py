@@ -6,7 +6,7 @@ from fastapi.security import HTTPBearer
 from passlib.context import CryptContext
 
 from app.core.config import settings
-from app.schemas.jwt_payload import JwtPayload
+from app.modules.auth.v1.schemas import JwtPayload
 
 oauth2 = HTTPBearer(auto_error=False)
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")

@@ -8,3 +8,5 @@ services:
       - .:/app
     env_file:
       - .env  # 👈 Load .env into the container
+    environment:
+      - PYTHONPATH=/app

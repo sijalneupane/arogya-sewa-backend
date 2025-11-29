@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
-from app.api.v1.routers import app_health, auth_router, user_router
+from app.core.app import app_health
 from app.core.config import settings
+from app.modules.auth.v1 import router as auth_router
+from app.modules.user.v1 import router as user_router
 
 app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
 
