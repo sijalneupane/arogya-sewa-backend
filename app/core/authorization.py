@@ -6,8 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_current_user
 from app.db.db import get_db
-from app.modules.auth.v1.models import Authorization
-from app.modules.auth.v1.role import Role
+from app.modules.auth.v1.models import Authorization, Role
 
 
 async def authorize(
@@ -28,13 +27,14 @@ async def authorize(
         f"Authorizing user with role: {user_role} for path: {path} and method: {method}"
     )
     # Check DB for path + method + role + organization
-    permission = await db.execute(
+    permissions = await db.execute(
         select(Authorization).where(
-            Authorization.role_id == role.id,
+            Authorization.role == role,
             Authorization.path == path,
         )
     )
-    permission = permission.scalar_one_or_none()
+
+    permission = permissions.scalars().first()
     if not permission:
         raise HTTPException(403, "Access denied to this path")
 
