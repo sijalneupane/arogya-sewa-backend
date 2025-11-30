@@ -23,9 +23,6 @@ async def authorize(
     if not role:
         raise HTTPException(404, "Role not found")
 
-    print(
-        f"Authorizing user with role: {user_role} for path: {path} and method: {method}"
-    )
     # Check DB for path + method + role + organization
     permissions = await db.execute(
         select(Authorization).where(
