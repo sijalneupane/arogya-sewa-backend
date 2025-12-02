@@ -10,10 +10,17 @@ from logging.config import fileConfig
 from sqlalchemy import Enum, engine_from_config, pool
 
 from alembic import context
+from app.core.config import settings
 
 # Import all models to ensure they're registered with SQLAlchemy
+# from app.db.base import Base
+from app.modules.auth.v1.models import Authorization, Role
+
+# # from app.modules.doctor.v1 import doctor
+# from app.modules.file.v1.models import File
+# from app.modules.hospital.v1.models import Hospital
+# from app.modules.user.v1.models import User
 from app.common.models import Base
-from app.core.config import settings
 
 config = context.config
 

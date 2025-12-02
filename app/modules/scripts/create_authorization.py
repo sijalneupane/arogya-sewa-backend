@@ -6,8 +6,7 @@ from sqlalchemy.future import select
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.db.database import AsyncSessionLocal
-from app.modules.auth.v1.models import Authorization
-from app.modules.auth.v1.role import Role
+from app.modules.auth.v1.models import Authorization, Role
 
 # Define HTTP methods
 readOnlyMethods = ["GET"]
@@ -31,6 +30,7 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/users/{user_id}", readOnlyMethods + writeMethods
         ),
+        setAuthorizationPermissions(role, "/api/v1/hospital", partialReadWriteMethods),
     ]
 
 

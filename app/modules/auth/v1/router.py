@@ -14,7 +14,14 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 @router.post("/signup", response_model=UserResponse)
 async def signup(data: UserCreate, db: AsyncSession = Depends(get_db)):
     # try:
-    return await create_user(db, data.email, data.password, data.name, data.role)
+    user_response=UserResponse.model_validate(await create_user(
+        db=db,
+        email=data.email,
+        password=data.password,
+        name=data.name,
+        role=data.role,
+    ))
+    return user_response
     #     if not user:
     #         raise HTTPException(status_code=400, detail="Email already registered")
     #     return "user"

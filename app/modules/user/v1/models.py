@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import VARCHAR, ForeignKey, String
+from sqlalchemy import VARCHAR, ForeignKey, String, null
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import DateTime
 
@@ -24,7 +24,6 @@ class User(Base, TimestampMixin):
     last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     role_id: Mapped[str] = mapped_column(ForeignKey("role.id"), nullable=False)
-    # file_id: Mapped[str] = mapped_column(ForeignKey("file.id"), nullable=True)
 
     # Use string reference
     role: Mapped["Role"] = relationship(back_populates="users")

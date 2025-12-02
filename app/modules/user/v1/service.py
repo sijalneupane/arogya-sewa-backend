@@ -3,17 +3,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import pwd_context  ## type: ignore
 from app.common.enums.role_enum import RoleEnum
+from app.core.security import pwd_context  ## type: ignore
+from app.core.utils.string_utils import StringUtils
 from app.modules.auth.v1.models import Role
 from app.modules.user.v1.models import User
-from app.core.utils.string_utils import StringUtils
 from app.modules.user.v1.schema import UserByIdResponse, UserListResponse, UserResponse
 
 
 async def create_user(
     db: AsyncSession, email: str, password: str, name: str, role: RoleEnum
-) -> UserResponse:
+) -> User:
     try:
         result = await db.execute(select(User).where(User.email == email))
         user = result.scalar_one_or_none()
@@ -35,7 +35,7 @@ async def create_user(
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
-        return UserResponse.model_validate(new_user)
+        return new_user
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error" + str(e))
 
