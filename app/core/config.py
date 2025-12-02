@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "My FastAPI App"
+    APP_NAME: str = "Arogya Sewa Backend APIs"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
 

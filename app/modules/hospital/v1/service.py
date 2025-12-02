@@ -19,36 +19,40 @@ async def add_hospital(
     admin_email: str,
     admin_password: str,
 ) -> Hospital:
-    # check duplicates first
-    duplicate_hospital = await db.execute(
-        select(Hospital).where(Hospital.name == name, Hospital.address == address)
-    )
-    if duplicate_hospital.scalars().first():
-        raise HTTPException(
-            status_code=400,
-            detail="Hospital with the same name and address already exists",
+    try:
+        # Create admin user first
+        admin_user = await create_user(
+            db=db,
+            name=admin_name,
+            email=admin_email,
+            password=admin_password,
+            role=RoleEnum.HOSPITAL_ADMIN,
         )
 
-    # create admin user explicitly (no Depends here)
-    admin = await create_user(
-        db=db,
-        email=admin_email,
-        password=admin_password,
-        name=admin_name,
-        role=RoleEnum.HOSPITAL_ADMIN,
-    )
+        # Create hospital
+        hospital = Hospital(
+            hospital_id=StringUtils.randomAlphaNumeric(8),
+            name=name,
+            address=address,
+            contact_number=contact_number,
+            opened_date=opened_date,
+            admin=admin_user,
+        )
+        db.add(hospital)
+        await db.commit()
+        await db.refresh(hospital)
 
-    hospital_id = StringUtils.randomAlphaNumeric(8)
-    new_hospital = Hospital(
-        hospital_id=hospital_id,
-        name=name,
-        address=address,
-        contact_number=contact_number,
-        opened_date=opened_date,
-        admin=admin,
-        # if your Hospital model has a relation/foreign key to admin, set it here, e.g. admin_id=admin.id
-    )
-    db.add(new_hospital)
-    await db.commit()
-    await db.refresh(new_hospital)
-    return new_hospital
+        # Ensure the admin relationship is loaded
+        result = await db.execute(
+            select(Hospital)
+            .options(selectinload(Hospital.admin))
+            .where(Hospital.hospital_id == hospital.hospital_id)
+        )
+        hospital_with_admin = result.scalar_one()
+        return hospital_with_admin
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

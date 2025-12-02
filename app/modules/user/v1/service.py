@@ -35,8 +35,18 @@ async def create_user(
         db.add(new_user)
         await db.commit()
         await db.refresh(new_user)
-        return new_user
+
+        # Load the user with the role relationship
+        result = await db.execute(
+            select(User).options(selectinload(User.role)).where(User.id == new_user.id)
+        )
+        user_with_role = result.scalar_one()
+        return user_with_role
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
+        await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error" + str(e))
 
 
