@@ -5,7 +5,7 @@ from app.core.utils.string_utils import StringUtils
 from app.db.base import Base
 from app.db.database import SessionLocal
 from app.db.database import sync_engine as engine
-from app.modules.auth.v1.role import Role
+from app.modules.auth.v1.models import Role
 
 # ✅ Ensure the table exists
 Base.metadata.create_all(bind=engine)

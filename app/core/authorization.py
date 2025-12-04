@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.models import Authorization, Role
+from app.modules.auth.v1.schemas import JwtPayload
 
 
 async def authorize(
     request: Request,
-    user=Depends(get_current_user),  # Ensure JWT + User is loaded
+    user: JwtPayload = Depends(get_current_user),  # Ensure JWT + User is loaded
     db: AsyncSession = Depends(get_db),
 ):
-    user_role = user.get("role")
+    user_role = user.role
     path = request.scope["route"].path
     method = request.method
 

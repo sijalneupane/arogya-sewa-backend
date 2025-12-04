@@ -20,7 +20,7 @@ def create_access_token(data: JwtPayload):
     to_encode = data.model_dump().copy()
     print(f"Token payload before encoding: {to_encode}")
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_DAYS
+        days=settings.ACCESS_TOKEN_EXPIRE_DAYS
     )
     to_encode.update({"exp": expire})
     print(f"Token payload after adding expiration: {to_encode}")
@@ -39,7 +39,7 @@ def create_refresh_token(data: dict):
 async def get_current_user(
     request: Request,
     token: str = Depends(oauth2),
-):
+)-> JwtPayload:
     auth_header = request.headers.get("authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="No authentication token provided")
@@ -62,7 +62,7 @@ async def get_current_user(
             print(f"Payload validation warning (continuing anyway): {validation_error}")
             # Continue with the raw payload if validation fails
 
-        return payload
+        return JwtPayload.model_validate(payload)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:

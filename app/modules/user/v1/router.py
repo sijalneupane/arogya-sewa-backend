@@ -13,7 +13,7 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=UserListResponse)
+@router.get("", response_model=UserListResponse)
 async def list_users(db: AsyncSession = Depends(get_db)):
     return await get_user_list(db)
 

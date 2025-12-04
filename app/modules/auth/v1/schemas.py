@@ -1,11 +1,12 @@
 from pydantic import BaseModel
 
+from app.common.enums.role_enum import RoleEnum
 from app.modules.user.v1.schema import UserResponse
 
 
 class JwtPayload(BaseModel):
     sub: str
-    role: str
+    role: RoleEnum
     name: str
 
 

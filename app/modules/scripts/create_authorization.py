@@ -10,7 +10,7 @@ from app.modules.auth.v1.models import Authorization, Role
 
 # Define HTTP methods
 readOnlyMethods = ["GET"]
-partialReadWriteMethods = ["POST"]
+postMethod = ["POST"]
 writeMethods = ["DELETE", "PUT", "PATCH"]
 
 
@@ -30,12 +30,23 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/users/{user_id}", readOnlyMethods + writeMethods
         ),
-        setAuthorizationPermissions(role, "/api/v1/hospital", partialReadWriteMethods),
+        setAuthorizationPermissions(role, "/api/v1/hospital", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/hospital/{hospital_id}", writeMethods
+        ),
     ]
 
 
 def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
-    return [setAuthorizationPermissions(role, "/users", readOnlyMethods + writeMethods)]
+    return [
+        setAuthorizationPermissions(
+            role, "/api/v1/users", readOnlyMethods + writeMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/hospital/{hospital_id}", writeMethods
+        ),
+        setAuthorizationPermissions(role, "/api/v1/hospital/my", readOnlyMethods),
+    ]
 
 
 def getUserPermissions(role: Role) -> List[Authorization]:
