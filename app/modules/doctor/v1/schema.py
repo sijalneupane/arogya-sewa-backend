@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.common.enums.role_enum import RoleEnum
 from app.modules.user.v1.schema import UserResponse
@@ -21,6 +21,12 @@ class DoctorUpdateSchema(BaseModel):
     experience_years: Optional[int] = None
     license_certificate: Optional[str] = None
     hospital_id: Optional[str] = None
+
+
+class UserToDoctorUpgradeSchema(BaseModel):
+    specialization_department: str = Field(..., min_length=1, max_length=100)
+    experience_years: int = Field(..., ge=0, le=50)
+    license_certificate: str = Field(..., min_length=1, max_length=100)
 
 
 class DoctorResponseSchema(BaseModel):

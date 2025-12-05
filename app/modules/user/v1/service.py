@@ -79,3 +79,32 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
         return UserByIdResponse(data=user_response)
     except Exception or HTTPException as e:
         raise e
+
+
+async def update_user_role(db: AsyncSession, user_id: str, new_role: RoleEnum) -> User:
+    """Update user role. Used internally for role upgrades."""
+    try:
+        # Get the user
+        result = await db.execute(
+            select(User).options(selectinload(User.role)).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Get the new role
+        role_result = await db.execute(select(Role).where(Role.role == new_role))
+        role = role_result.scalar_one_or_none()
+        if not role:
+            raise HTTPException(status_code=404, detail="Role not found")
+
+        # Update user role
+        user.role_id = role.id
+        await db.flush()  # Don't commit here, let caller handle transaction
+        await db.refresh(user)
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

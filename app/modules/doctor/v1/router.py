@@ -12,6 +12,7 @@ from app.modules.doctor.v1.schema import (
     DoctorResponseSchema,
     DoctorUpdateSchema,
     DoctorWithHospitalResponseSchema,
+    UserToDoctorUpgradeSchema,
 )
 from app.modules.doctor.v1.service import (
     create_doctor,
@@ -21,6 +22,7 @@ from app.modules.doctor.v1.service import (
     get_doctor_by_user_id,
     get_doctors_by_hospital,
     update_doctor,
+    upgrade_user_to_doctor,
 )
 
 router = APIRouter(
@@ -62,6 +64,27 @@ async def get_doctors(
         DoctorResponseSchema.model_validate(doctor) for doctor in doctors
     ]
     return DoctorListResponseSchema(data=doctor_responses)
+
+
+@router.post("/upgrade", summary="Upgrade current user to doctor")
+async def upgrade_current_user_to_doctor(
+    data: UserToDoctorUpgradeSchema,
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    # _=Depends(authorize),  # Any authenticated user can upgrade themselves
+) -> DoctorDetailResponseSchema:
+    """Upgrade the current user to a doctor. This will update user role to DOCTOR and create doctor profile."""
+    doctor = await upgrade_user_to_doctor(
+        db=db,
+        user_id=user.sub,
+        specialization_department=data.specialization_department,
+        experience_years=data.experience_years,
+        license_certificate=data.license_certificate,
+    )
+    response = DoctorWithHospitalResponseSchema.model_validate(doctor)
+    return DoctorDetailResponseSchema(
+        message="Successfully upgraded to doctor", data=response
+    )
 
 
 @router.get("/me", summary="Get own doctor profile")

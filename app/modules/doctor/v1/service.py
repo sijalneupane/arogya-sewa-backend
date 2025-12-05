@@ -15,7 +15,7 @@ from app.modules.doctor.v1.schema import (
 )
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
-from app.modules.user.v1.service import create_user
+from app.modules.user.v1.service import create_user, update_user_role
 
 
 async def create_doctor(
@@ -81,6 +81,79 @@ async def create_doctor(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+async def upgrade_user_to_doctor(
+    db: AsyncSession,
+    user_id: str,
+    specialization_department: str,
+    experience_years: int,
+    license_certificate: str,
+) -> Doctor:
+    """Upgrade an existing user to doctor role. Both user role update and doctor creation must succeed."""
+    try:
+        # Start transaction explicitly
+        async with db.begin():
+            # First, verify user exists and is eligible for upgrade
+            result = await db.execute(
+                select(User).options(selectinload(User.role)).where(User.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            # Check if user already has a doctor profile
+            doctor_check = await db.execute(
+                select(Doctor).where(Doctor.user_id == user_id)
+            )
+            existing_doctor = doctor_check.scalar_one_or_none()
+            if existing_doctor:
+                raise HTTPException(
+                    status_code=400, detail="User already has a doctor profile"
+                )
+
+            # Check if user role is eligible for upgrade (PATIENT or USER)
+            if user.role.role not in [RoleEnum.PATIENT]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot upgrade user with role {user.role.role} to doctor. Only patients can be upgraded.",
+                )
+
+            # Update user role to DOCTOR (this will auto-rollback if doctor creation fails)
+            updated_user = await update_user_role(db, user_id, RoleEnum.DOCTOR)
+
+            # Create doctor record (hospital_id is None as specified)
+            doctor = Doctor(
+                doctor_id=StringUtils.randomAlphaNumeric(8),
+                specialization_department=specialization_department,
+                experience_years=experience_years,
+                license_certificate=license_certificate,
+                user_id=user_id,
+                hospital_id=None,  # Explicitly set to None for user upgrades
+            )
+
+            db.add(doctor)
+            await db.flush()  # Ensure doctor is created before returning
+
+            # Return doctor with relationships loaded
+            result = await db.execute(
+                select(Doctor)
+                .options(
+                    selectinload(Doctor.user).selectinload(User.role),
+                    selectinload(Doctor.hospital),
+                )
+                .where(Doctor.doctor_id == doctor.doctor_id)
+            )
+            return result.scalar_one()
+
+    except HTTPException:
+        # HTTPExceptions are already properly formatted
+        raise
+    except Exception as e:
+        # Any other exception should rollback the transaction automatically
+        raise HTTPException(
+            status_code=500, detail=f"Failed to upgrade user to doctor: {str(e)}"
+        )
+
+
 async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
     """Get all doctors with their user and hospital details."""
     try:
@@ -127,10 +200,12 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
             )
             .where(Doctor.user_id == user_id)
         )
+
         doctor = result.scalar_one_or_none()
         if not doctor:
             raise HTTPException(
-                status_code=404, detail="Doctor profile not found for this user"
+                status_code=404,
+                detail="Doctor profile not found for this user ",
             )
         return doctor
     except HTTPException:

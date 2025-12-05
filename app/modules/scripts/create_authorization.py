@@ -8,6 +8,12 @@ from app.core.utils.string_utils import StringUtils
 from app.db.database import AsyncSessionLocal
 from app.modules.auth.v1.models import Authorization, Role
 
+# Import all models to ensure they're registered with SQLAlchemy before running
+from app.modules.doctor.v1.models import Doctor  # Import Doctor model
+from app.modules.file.v1.models import File
+from app.modules.hospital.v1.models import Hospital
+from app.modules.user.v1.models import User
+
 # Define HTTP methods
 readOnlyMethods = ["GET"]
 postMethod = ["POST"]
@@ -55,6 +61,7 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
 
 def getUserPermissions(role: Role) -> List[Authorization]:
     return [
+        setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
         # )
