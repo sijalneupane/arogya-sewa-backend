@@ -17,10 +17,9 @@ class Hospital(Base, TimestampMixin):
 
     hospital_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    address: Mapped[str] = mapped_column(String(200), nullable=False)
-    location: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
-    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    location: Mapped[str] = mapped_column(String(200), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
     contact_number: Mapped[List[str]] = mapped_column(
         ARRAY(String(15)), nullable=False, default=list
     )
@@ -31,4 +30,4 @@ class Hospital(Base, TimestampMixin):
     admin: Mapped["User"] = relationship("User", back_populates="hospital")
 
     def __repr__(self) -> str:
-        return f"Hospital(hospital_id={self.hospital_id}, name={self.name}, address={self.address})"
+        return f"Hospital(hospital_id={self.hospital_id}, name={self.name}, location={self.location})"
