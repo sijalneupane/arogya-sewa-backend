@@ -1,0 +1,320 @@
+from typing import Optional, List
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.common.enums.role_enum import RoleEnum
+from app.core.utils.string_utils import StringUtils
+from app.modules.doctor.v1.models import Doctor
+from app.modules.doctor.v1.schema import (
+    DoctorListResponseSchema,
+    DoctorDetailResponseSchema,
+    DoctorResponseSchema,
+    DoctorWithHospitalResponseSchema,
+)
+from app.modules.hospital.v1.models import Hospital
+from app.modules.user.v1.models import User
+from app.modules.user.v1.service import create_user
+
+
+async def create_doctor(
+    db: AsyncSession,
+    specialization_department: str,
+    experience_years: int,
+    license_certificate: str,
+    user_name: str,
+    user_email: str,
+    user_password: str,
+    hospital_id: Optional[str] = None,
+) -> Doctor:
+    """Create a new doctor with an associated user account."""
+    try:
+        # Validate hospital exists if hospital_id is provided
+        if hospital_id:
+            hospital_result = await db.execute(
+                select(Hospital).where(Hospital.hospital_id == hospital_id)
+            )
+            hospital = hospital_result.scalar_one_or_none()
+            if not hospital:
+                raise HTTPException(status_code=404, detail="Hospital not found")
+
+        # Create user account for the doctor
+        doctor_user = await create_user(
+            db=db,
+            name=user_name,
+            email=user_email,
+            password=user_password,
+            role=RoleEnum.DOCTOR,
+        )
+
+        # Create doctor record
+        doctor = Doctor(
+            doctor_id=StringUtils.randomAlphaNumeric(8),
+            specialization_department=specialization_department,
+            experience_years=experience_years,
+            license_certificate=license_certificate,
+            user_id=doctor_user.id,
+            hospital_id=hospital_id,
+        )
+
+        db.add(doctor)
+        await db.commit()
+        await db.refresh(doctor)
+
+        # Return doctor with relationships loaded
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.doctor_id == doctor.doctor_id)
+        )
+        return result.scalar_one()
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
+    """Get all doctors with their user and hospital details."""
+    try:
+        result = await db.execute(
+            select(Doctor).options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+        )
+        return list(result.scalars().all())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_doctor_by_id(db: AsyncSession, doctor_id: str) -> Doctor:
+    """Get a doctor by their ID with all relationships."""
+    try:
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.doctor_id == doctor_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        return doctor
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
+    """Get a doctor by their user ID."""
+    try:
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.user_id == user_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(
+                status_code=404, detail="Doctor profile not found for this user"
+            )
+        return doctor
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Doctor]:
+    """Get all doctors for a specific hospital."""
+    try:
+        # Verify hospital exists
+        hospital_result = await db.execute(
+            select(Hospital).where(Hospital.hospital_id == hospital_id)
+        )
+        hospital = hospital_result.scalar_one_or_none()
+        if not hospital:
+            raise HTTPException(status_code=404, detail="Hospital not found")
+
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.hospital_id == hospital_id)
+        )
+        return list(result.scalars().all())
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def update_doctor(
+    db: AsyncSession,
+    doctor_id: str,
+    current_user_id: str,
+    role: RoleEnum,
+    specialization_department: Optional[str] = None,
+    experience_years: Optional[int] = None,
+    license_certificate: Optional[str] = None,
+    hospital_id: Optional[str] = None,
+) -> Doctor:
+    """Update doctor details."""
+    try:
+        # Get the doctor first
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.doctor_id == doctor_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+
+        # Authorization check
+        if role == RoleEnum.SUPER_ADMIN:
+            # Super admin can update any doctor
+            pass
+        elif role == RoleEnum.HOSPITAL_ADMIN:
+            # Hospital admin can update doctors in their hospital
+            if not doctor.hospital_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Doctor is not associated with any hospital.",
+                )
+            # Get admin's hospital
+            admin_hospital_result = await db.execute(
+                select(Hospital).where(Hospital.admin_id == current_user_id)
+            )
+            admin_hospital = admin_hospital_result.scalar_one_or_none()
+            if not admin_hospital or admin_hospital.hospital_id != doctor.hospital_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. You can only update doctors in your hospital.",
+                )
+        elif role == RoleEnum.DOCTOR:
+            # Doctor can only update their own profile
+            if doctor.user_id != current_user_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. You can only update your own profile.",
+                )
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Insufficient permissions to update doctor.",
+            )
+
+        # Validate hospital if being changed
+        if hospital_id is not None and hospital_id != doctor.hospital_id:
+            if hospital_id:  # If assigning to a hospital
+                hospital_result = await db.execute(
+                    select(Hospital).where(Hospital.hospital_id == hospital_id)
+                )
+                hospital = hospital_result.scalar_one_or_none()
+                if not hospital:
+                    raise HTTPException(status_code=404, detail="Hospital not found")
+
+        # Update fields if provided
+        if specialization_department is not None:
+            doctor.specialization_department = specialization_department
+        if experience_years is not None:
+            doctor.experience_years = experience_years
+        if license_certificate is not None:
+            doctor.license_certificate = license_certificate
+        if hospital_id is not None:
+            doctor.hospital_id = hospital_id if hospital_id else None
+
+        await db.commit()
+        await db.refresh(doctor)
+
+        # Reload with relationships
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.doctor_id == doctor_id)
+        )
+        return result.scalar_one()
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def delete_doctor(
+    db: AsyncSession, doctor_id: str, current_user_id: str, role: RoleEnum
+):
+    """Delete a doctor."""
+    try:
+        # Get the doctor first
+        result = await db.execute(
+            select(Doctor)
+            .options(selectinload(Doctor.user))
+            .where(Doctor.doctor_id == doctor_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+
+        # Authorization check
+        if role == RoleEnum.SUPER_ADMIN:
+            # Super admin can delete any doctor
+            pass
+        elif role == RoleEnum.HOSPITAL_ADMIN:
+            # Hospital admin can delete doctors in their hospital
+            if not doctor.hospital_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Doctor is not associated with any hospital.",
+                )
+            # Get admin's hospital
+            admin_hospital_result = await db.execute(
+                select(Hospital).where(Hospital.admin_id == current_user_id)
+            )
+            admin_hospital = admin_hospital_result.scalar_one_or_none()
+            if not admin_hospital or admin_hospital.hospital_id != doctor.hospital_id:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. You can only delete doctors in your hospital.",
+                )
+        else:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. Insufficient permissions to delete doctor.",
+            )
+
+        await db.delete(doctor)
+        await db.commit()
+        return {"message": "Doctor deleted successfully"}
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

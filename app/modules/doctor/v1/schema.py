@@ -1,0 +1,65 @@
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
+
+from app.common.enums.role_enum import RoleEnum
+from app.modules.user.v1.schema import UserResponse
+
+
+class DoctorCreateSchema(BaseModel):
+    specialization_department: str
+    experience_years: int
+    license_certificate: str
+    hospital_id: Optional[str] = None
+    user_name: str
+    user_email: str
+    user_password: str
+
+
+class DoctorUpdateSchema(BaseModel):
+    specialization_department: Optional[str] = None
+    experience_years: Optional[int] = None
+    license_certificate: Optional[str] = None
+    hospital_id: Optional[str] = None
+
+
+class DoctorResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    doctor_id: str
+    specialization_department: str
+    experience_years: int
+    license_certificate: str
+    hospital_id: Optional[str] = None
+    user: UserResponse
+
+
+class HospitalBasicInfo(BaseModel):
+    """Basic hospital info for doctor response (to avoid circular references)"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    hospital_id: str
+    name: str
+    location: str
+
+
+class DoctorWithHospitalResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    doctor_id: str
+    specialization_department: str
+    experience_years: int
+    license_certificate: str
+    user: UserResponse
+    hospital: Optional[HospitalBasicInfo] = None
+
+
+class DoctorListResponseSchema(BaseModel):
+    message: str = "Doctors fetched successfully"
+    data: list[DoctorResponseSchema]
+
+
+class DoctorDetailResponseSchema(BaseModel):
+    message: str = "Doctor fetched successfully"
+    data: DoctorWithHospitalResponseSchema

@@ -46,6 +46,10 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
             role, "/api/v1/hospital/{hospital_id}", writeMethods
         ),
         setAuthorizationPermissions(role, "/api/v1/hospital/my", readOnlyMethods),
+        setAuthorizationPermissions(
+            role, "/api/v1/doctors", postMethod + readOnlyMethods
+        ),
+        setAuthorizationPermissions(role, "/api/v1/doctors/{doctor_id}", writeMethods),
     ]
 
 
@@ -59,7 +63,8 @@ def getUserPermissions(role: Role) -> List[Authorization]:
 
 def getDoctorPermissions(role: Role) -> List[Authorization]:
     return [
-        # setAuthorizationPermissions(role, "/doctor/me", readOnlyMethods + writeMethods),
+        setAuthorizationPermissions(role, "/api/v1/doctors/me", readOnlyMethods),
+        setAuthorizationPermissions(role, "/api/v1/doctors/{doctor_id}", writeMethods),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods
         # ),

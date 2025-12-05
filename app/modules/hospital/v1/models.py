@@ -8,7 +8,7 @@ from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    # from app.models.doctor import Doctor,User
+    from app.modules.doctor.v1.models import Doctor
     from app.modules.user.v1.models import User
 
 
@@ -28,6 +28,7 @@ class Hospital(Base, TimestampMixin):
         ForeignKey("user.id"), nullable=False, unique=False
     )
     admin: Mapped["User"] = relationship("User", back_populates="hospital")
+    doctors: Mapped[List["Doctor"]] = relationship("Doctor", back_populates="hospital")
 
     def __repr__(self) -> str:
         return f"Hospital(hospital_id={self.hospital_id}, name={self.name}, location={self.location})"

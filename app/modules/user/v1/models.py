@@ -10,6 +10,7 @@ from app.db.base import Base
 # Only import Role for type-checking (avoids runtime circular import)
 if TYPE_CHECKING:
     from app.modules.auth.v1.models import Role
+    from app.modules.doctor.v1.models import Doctor
     from app.modules.file.v1.models import File
     from app.modules.hospital.v1.models import Hospital
 
@@ -30,6 +31,9 @@ class User(Base, TimestampMixin):
     files: Mapped[list["File"]] = relationship(back_populates="user")
     hospital: Mapped[Optional["Hospital"]] = relationship(
         back_populates="admin", uselist=False
+    )
+    doctor: Mapped[Optional["Doctor"]] = relationship(
+        back_populates="user", uselist=False
     )
 
     def __repr__(self) -> str:

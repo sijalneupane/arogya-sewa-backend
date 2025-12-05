@@ -1,0 +1,37 @@
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
+from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.modules.hospital.v1.models import Hospital
+    from app.modules.user.v1.models import User
+
+
+class Doctor(Base, TimestampMixin):
+    __tablename__ = "doctor"
+
+    doctor_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
+    specialization_department: Mapped[str] = mapped_column(String(100), nullable=False)
+    experience_years: Mapped[int] = mapped_column(Integer, nullable=False)
+    license_certificate: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    # Foreign key to User (required)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("user.id"), nullable=False, unique=True
+    )
+
+    # Foreign key to Hospital (optional)
+    hospital_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("hospital.hospital_id"), nullable=True
+    )
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="doctor")
+    hospital: Mapped[Optional["Hospital"]] = relationship(back_populates="doctors")
+
+    def __repr__(self) -> str:
+        return f"Doctor(id={self.doctor_id}, specialization={self.specialization_department}, user_id={self.user_id})"
