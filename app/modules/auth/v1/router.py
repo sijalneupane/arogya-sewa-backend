@@ -48,3 +48,4 @@ async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Internal server error" + e.__str__()
         )
+

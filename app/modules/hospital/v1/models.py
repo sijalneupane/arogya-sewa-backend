@@ -1,6 +1,6 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import Date, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -18,6 +18,9 @@ class Hospital(Base, TimestampMixin):
     hospital_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     address: Mapped[str] = mapped_column(String(200), nullable=False)
+    location: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    latitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    longitude: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     contact_number: Mapped[List[str]] = mapped_column(
         ARRAY(String(15)), nullable=False, default=list
     )

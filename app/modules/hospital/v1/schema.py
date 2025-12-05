@@ -9,6 +9,9 @@ from app.modules.user.v1.schema import UserResponse
 class HospitalCreateSchema(BaseModel):
     name: str
     address: str
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     contact_number: list[str]
     opened_date: date = Field(
         ..., description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
@@ -21,6 +24,9 @@ class HospitalCreateSchema(BaseModel):
 class HospitalUpdateSchema(BaseModel):
     name: Optional[str] = None
     address: Optional[str] = None
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     contact_number: Optional[list[str]] = None
     opened_date: Optional[date] = Field(
         None, description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
@@ -33,6 +39,9 @@ class HospitalResponseSchema(BaseModel):
     hospital_id: str
     name: str
     address: str
+    location: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     contact_number: list[str]
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
     admin: UserResponse

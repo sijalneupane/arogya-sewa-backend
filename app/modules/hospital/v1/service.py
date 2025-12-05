@@ -16,6 +16,9 @@ async def add_hospital(
     db: AsyncSession,
     name: str,
     address: str,
+    location: Optional[str],
+    latitude: Optional[float],
+    longitude: Optional[float],
     contact_number: list[str],
     opened_date,
     admin_name: str,
@@ -37,6 +40,9 @@ async def add_hospital(
             hospital_id=StringUtils.randomAlphaNumeric(8),
             name=name,
             address=address,
+            location=location,
+            latitude=latitude,
+            longitude=longitude,
             contact_number=contact_number,
             opened_date=opened_date,
             admin=admin_user,
@@ -120,6 +126,9 @@ async def update_hospital(
     role: RoleEnum,
     name: Optional[str] = None,
     address: Optional[str] = None,
+    location: Optional[str] = None,
+    latitude: Optional[float] = None,
+    longitude: Optional[float] = None,
     contact_number: Optional[list[str]] = None,
     opened_date=None,
 ) -> Hospital:
@@ -158,6 +167,12 @@ async def update_hospital(
             hospital.name = name
         if address is not None:
             hospital.address = address
+        if location is not None:
+            hospital.location = location
+        if latitude is not None:
+            hospital.latitude = latitude
+        if longitude is not None:
+            hospital.longitude = longitude
         if contact_number is not None:
             hospital.contact_number = contact_number
         if opened_date is not None:
