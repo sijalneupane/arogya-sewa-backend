@@ -15,6 +15,7 @@ from app.core.config import settings
 # Import all models to ensure they're registered with SQLAlchemy
 # from app.db.base import Base
 from app.modules.auth.v1.models import Authorization, Role
+from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital

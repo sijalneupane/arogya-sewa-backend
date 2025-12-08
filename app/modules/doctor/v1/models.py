@@ -7,6 +7,7 @@ from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.modules.availability.v1.models import Availability
     from app.modules.hospital.v1.models import Hospital
     from app.modules.user.v1.models import User
 
@@ -32,6 +33,9 @@ class Doctor(Base, TimestampMixin):
     # Relationships
     user: Mapped["User"] = relationship(back_populates="doctor")
     hospital: Mapped[Optional["Hospital"]] = relationship(back_populates="doctors")
+    availabilities: Mapped[list["Availability"]] = relationship(
+        back_populates="doctor", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"Doctor(id={self.doctor_id}, specialization={self.specialization_department}, user_id={self.user_id})"

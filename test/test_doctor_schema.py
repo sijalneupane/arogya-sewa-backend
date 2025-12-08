@@ -74,8 +74,12 @@ def test_doctor_schema_validation():
 
         print("\n✅ Doctor with Hospital schema validation successful!")
         print(f"Doctor Name: {validated_doctor_with_hospital.user.name}")
-        print(f"Hospital: {validated_doctor_with_hospital.hospital.name}")
-        print(f"Hospital Location: {validated_doctor_with_hospital.hospital.location}")
+        print(
+            f"Hospital: {validated_doctor_with_hospital.hospital.name if validated_doctor_with_hospital.hospital else 'N/A'}"
+        )
+        print(
+            f"Hospital Location: {validated_doctor_with_hospital.hospital.location if validated_doctor_with_hospital.hospital else 'N/A'}"
+        )
 
         return True
 
