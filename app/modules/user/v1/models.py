@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import VARCHAR, ForeignKey, String, null
+from sqlalchemy import VARCHAR, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import DateTime
 
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.modules.doctor.v1.models import Doctor
     from app.modules.file.v1.models import File
     from app.modules.hospital.v1.models import Hospital
+    from app.modules.patient.v1.models import Patient
 
 
 class User(Base, TimestampMixin):
@@ -21,6 +22,7 @@ class User(Base, TimestampMixin):
     id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     password: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
@@ -33,6 +35,9 @@ class User(Base, TimestampMixin):
         back_populates="admin", uselist=False
     )
     doctor: Mapped[Optional["Doctor"]] = relationship(
+        back_populates="user", uselist=False
+    )
+    patient: Mapped[Optional["Patient"]] = relationship(
         back_populates="user", uselist=False
     )
 

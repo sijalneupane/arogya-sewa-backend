@@ -19,6 +19,7 @@ from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital
+from app.modules.patient.v1.models import Patient
 from app.modules.user.v1.models import User
 from app.common.models import Base
 

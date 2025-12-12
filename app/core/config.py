@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     DB_HOST: str  # matches service name in docker-compose
     DB_PORT: int
 
+    # Cloudinary settings
+    CLOUDINARY_CLOUD_NAME: str
+    CLOUDINARY_API_KEY: str
+    CLOUDINARY_API_SECRET: str
+
     # --- SYNC engine (for Alembic and scripts)
     @property
     def DATABASE_URL(self) -> str:

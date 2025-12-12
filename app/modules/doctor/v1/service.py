@@ -26,6 +26,7 @@ async def create_doctor(
     user_name: str,
     user_email: str,
     user_password: str,
+    user_phone: str,
     hospital_id: Optional[str] = None,
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
@@ -45,6 +46,7 @@ async def create_doctor(
             name=user_name,
             email=user_email,
             password=user_password,
+            phone_number=user_phone,
             role=RoleEnum.DOCTOR,
         )
 

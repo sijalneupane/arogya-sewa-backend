@@ -18,6 +18,7 @@ class HospitalCreateSchema(BaseModel):
     admin_name: str
     admin_email: EmailStr
     admin_password: str
+    admin_phone: str
 
 
 class HospitalUpdateSchema(BaseModel):

@@ -16,6 +16,8 @@ from app.modules.hospital.v1.schema import (
 from app.modules.hospital.v1.service import (
     add_hospital,
     get_all_hospitals,
+    get_closest_hospital_long_lat_haversine,
+    get_closest_hospital_long_lat_vincenity,
     get_hospital_by_admin_id,
     get_hospital_by_id,
     update_hospital,
@@ -62,6 +64,25 @@ async def get_own_hospital(
     hospital = await get_hospital_by_admin_id(db=db, admin_id=user.sub)
     response = HospitalResponseSchema.model_validate(hospital)
     return HospitalDetailResponseSchema(data=response)
+
+
+@router.get("/nearest", summary="Get closest hospitals to user's location")
+async def get_closest_hospitals(
+    latitude: float,
+    longitude: float,
+    max_distance_km: float = 20,
+    db: AsyncSession = Depends(get_db),
+    # _=Depends(authorize),
+) -> HospitalListResponseSchema:
+    hospitals = await get_closest_hospital_long_lat_haversine(
+        db, latitude, longitude, max_distance_km
+    )
+    if not hospitals:
+        return HospitalListResponseSchema(data=[])
+    hospital_responses = [
+        HospitalResponseSchema.model_validate(hospital) for hospital in hospitals
+    ]
+    return HospitalListResponseSchema(data=hospital_responses)
 
 
 @router.get("/{hospital_id}", summary="Get hospital by ID")

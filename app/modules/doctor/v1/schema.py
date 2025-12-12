@@ -14,6 +14,7 @@ class DoctorCreateSchema(BaseModel):
     user_name: str
     user_email: str
     user_password: str
+    user_phone: str
 
 
 class DoctorUpdateSchema(BaseModel):

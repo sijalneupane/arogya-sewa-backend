@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
+from app.modules import hospital
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1 import service as UserService
 from app.modules.user.v1.models import User
@@ -23,6 +24,7 @@ async def add_hospital(
     admin_name: str,
     admin_email: str,
     admin_password: str,
+    admin_phone: str,
 ) -> Hospital:
     try:
         # Create admin user first
@@ -32,6 +34,7 @@ async def add_hospital(
             email=admin_email,
             password=admin_password,
             role=RoleEnum.HOSPITAL_ADMIN,
+            phone_number=admin_phone,
         )
 
         # Create hospital
@@ -225,3 +228,101 @@ async def delete_hospital(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# using vincenty's formula for distance calculation
+
+
+async def get_closest_hospital_long_lat_vincenity(
+    db: AsyncSession,
+    latitude: float,
+    longitude: float,
+    max_distance_km: float = 20,
+):
+    """Get hospitals within a certain distance from the given coordinates."""
+    from geopy.distance import geodesic
+
+    print("\n-------get_closest_hospital_long_lat-------\n")
+    try:
+        hospitals = await db.execute(
+            select(Hospital).options(
+                selectinload(Hospital.admin).selectinload(User.role)
+            )
+        )
+        hospitals = hospitals.scalars().all()
+
+        print("\n-------" + str(len(hospitals)) + "-------\n")
+        nearby_hospitals = []
+        for hosp in hospitals:
+            hospital_coords = (hosp.latitude, hosp.longitude)
+            user_coords = (latitude, longitude)
+            distance = geodesic(hospital_coords, user_coords).km
+            if distance <= max_distance_km:
+                nearby_hospitals.append((hosp, distance))
+
+        # Sort the list by distance (closest first)
+        nearby_hospitals.sort(key=lambda item: item[1])
+        print("\n-------" + str(nearby_hospitals) + "-------\n")
+
+        # Return only hospitals, now perfectly ordered from closest to farthest
+        return [hosp for hosp, distance in nearby_hospitals]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_closest_hospital_long_lat_haversine(
+    db: AsyncSession,
+    latitude: float,
+    longitude: float,
+    max_distance_km: float = 20,
+):
+    """Get hospitals within a certain distance from the given coordinates."""
+    # --- CHANGE: Import great_circle instead of geodesic ---
+    from geopy.distance import great_circle
+
+    print("\n-------get_closest_hospital_long_lat-------\n")
+    try:
+        # NOTE: This part (fetching ALL hospitals) should ideally be optimized using
+        # a spatial database index for performance.
+        hospitals = await db.execute(
+            select(Hospital).options(
+                selectinload(Hospital.admin).selectinload(User.role)
+            )
+        )
+        hospitals = hospitals.scalars().all()
+
+        print("\n-------" + str(len(hospitals)) + "-------\n")
+        nearby_hospitals = []
+        for hosp in hospitals:
+            hospital_coords = (hosp.latitude, hosp.longitude)
+            user_coords = (latitude, longitude)
+
+            # --- CHANGE: Use great_circle() instead of geodesic() ---
+            # great_circle implements the Haversine formula.
+            distance = great_circle(hospital_coords, user_coords).km
+
+            if distance <= max_distance_km:
+                nearby_hospitals.append((hosp, distance))
+
+        # Sort the list by distance (closest first)
+        nearby_hospitals.sort(key=lambda item: item[1])
+        print("\n-------" + str(nearby_hospitals) + "-------\n")
+
+        # Return only hospitals, now perfectly ordered from closest to farthest
+        return [hosp for hosp, distance in nearby_hospitals]
+    except Exception as e:
+        # In a production app, it's better to log the exception (e)
+        # and raise a more generic error for the user.
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# async def get_closest_hospitals(
+#     db: AsyncSession,
+#     user_id:str,
+#     max_distance_km: float = 20,
+# ) -> list[Hospital]:
+#     """GEt closest hospitals to user's location"""
+#     hospitals = await _get_closest_hospital_long_lat(
+#         db, latitude, longitude, max_distance_km
+#     )
+#     return hospitals

@@ -12,7 +12,12 @@ from app.modules.user.v1.schema import UserByIdResponse, UserListResponse, UserR
 
 
 async def create_user(
-    db: AsyncSession, email: str, password: str, name: str, role: RoleEnum
+    db: AsyncSession,
+    email: str,
+    password: str,
+    name: str,
+    phone_number: str,
+    role: RoleEnum,
 ) -> User:
     try:
         result = await db.execute(select(User).where(User.email == email))
@@ -28,12 +33,13 @@ async def create_user(
             id=id,
             name=name,
             email=email,
+            phone_number=phone_number,
             role=relatedRole.scalar_one(),
             password=hashed_password,
         )
 
         db.add(new_user)
-        await db.commit()
+        await db.flush()  # Changed from commit to flush
         await db.refresh(new_user)
 
         # Load the user with the role relationship
@@ -43,10 +49,8 @@ async def create_user(
         user_with_role = result.scalar_one()
         return user_with_role
     except HTTPException:
-        await db.rollback()
         raise
     except Exception as e:
-        await db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error" + str(e))
 
 

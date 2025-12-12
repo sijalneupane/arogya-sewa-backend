@@ -1,3 +1,4 @@
+from logging import config
 from os import error
 from fastapi import FastAPI, HTTPException, status
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
@@ -5,13 +6,17 @@ from fastapi.responses import JSONResponse
 
 from app.core.app import app_health
 from app.core.config import settings
+from app.core.configuration.cloudinary_config import configure_cloudinary
 from app.modules.auth.v1 import router as auth_router
 from app.modules.availability.v1 import router as availability_router
 from app.modules.doctor.v1 import router as doctor_router
 from app.modules.hospital.v1 import router as hospital_router
 from app.modules.user.v1 import router as user_router
+from app.modules.file.v1 import router as file_router
 
 app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
+
+configure_cloudinary()
 
 
 @app.exception_handler(Exception)
@@ -58,3 +63,4 @@ app.include_router(user_router.router, prefix=settings.API_V1_STR)
 app.include_router(hospital_router.router, prefix=settings.API_V1_STR)
 app.include_router(doctor_router.router, prefix=settings.API_V1_STR)
 app.include_router(availability_router.router, prefix=settings.API_V1_STR)
+app.include_router(file_router.router, prefix=settings.API_V1_STR)
