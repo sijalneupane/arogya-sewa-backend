@@ -16,6 +16,10 @@ async def saveFile(
     file_type: FileTypeEnum,
 ) -> File:
     try:
+        if file.size is not None and file.size > 2 * 1024 * 1024:  # 10 MB limit
+            raise HTTPException(
+                status_code=400, detail="File size exceeds the 2MB limit"
+            )
         url, public_id = await upload_image(file, folder="arogyga_images")
         new_file = File(
             file_id="F" + StringUtils.randomAlphaNumeric(7),

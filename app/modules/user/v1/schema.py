@@ -25,9 +25,9 @@ class BloodGroupEnum(StrEnum):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    name: str
-    phone_number: str
-    password: str
+    name: str = Field(..., min_length=5, max_length=14)
+    phone_number: str = Field(..., min_length=10, max_length=10)
+    password: str = Field(..., min_length=6, max_length=20)
     role: RoleEnum
 
 
@@ -35,9 +35,9 @@ class PatientSignupSchema(BaseModel):
     """Schema for patient signup - creates both user and patient records"""
 
     email: EmailStr
-    name: str
-    phone_number: str
-    password: str
+    name: str = Field(..., min_length=5, max_length=14)
+    phone_number: str = Field(..., min_length=10, max_length=10)
+    password: str = Field(..., min_length=6, max_length=20)
     dob: date
     gender: GenderEnum
     blood_group: BloodGroupEnum
@@ -47,9 +47,9 @@ class DoctorSignupSchema(BaseModel):
     """Schema for doctor signup - creates both user and doctor records"""
 
     email: EmailStr
-    name: str
-    phone_number: str
-    password: str
+    name: str = Field(..., min_length=5, max_length=14)
+    phone_number: str = Field(..., min_length=10, max_length=10)
+    password: str = Field(..., min_length=6, max_length=20)
     specialization_department: str
     experience_years: int
     license_certificate: str
@@ -59,9 +59,9 @@ class SuperAdminSignupSchema(BaseModel):
     """Schema for super admin signup - only creates user record"""
 
     email: EmailStr
-    name: str
-    phone_number: str
-    password: str
+    name: str = Field(..., min_length=5, max_length=14)
+    phone_number: str = Field(..., min_length=10, max_length=10)
+    password: str = Field(..., min_length=6, max_length=20)
 
 
 class UserLogin(BaseModel):

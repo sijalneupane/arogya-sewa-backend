@@ -2,7 +2,7 @@ from datetime import date as date_type
 from datetime import time as time_type
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Date, ForeignKey, String, Text, Time
+from sqlalchemy import Boolean, Date, ForeignKey, String, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
@@ -25,6 +25,9 @@ class Availability(Base, TimestampMixin):
     start_time: Mapped[time_type] = mapped_column(Time, nullable=False)
     end_time: Mapped[time_type] = mapped_column(Time, nullable=False)
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    is_booked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
 
     # Relationships
     doctor: Mapped["Doctor"] = relationship(back_populates="availabilities")

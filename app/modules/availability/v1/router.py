@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -64,10 +66,16 @@ async def create_new_availability(
 @router.get("", summary="Get all availabilities")
 async def get_availabilities(
     future_only: bool = Query(True, description="Filter for future dates only"),
+    is_booked: Optional[bool] = Query(
+        None,
+        description="Filter by booking status (True for booked, False for available)",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> AvailabilityListResponseSchema:
     """Get all availability slots. Public endpoint - no authentication required."""
-    availabilities = await get_all_availabilities(db=db, future_only=future_only)
+    availabilities = await get_all_availabilities(
+        db=db, future_only=future_only, is_booked=is_booked
+    )
     availability_responses = [
         AvailabilityResponseSchema.model_validate(avail) for avail in availabilities
     ]
@@ -78,11 +86,15 @@ async def get_availabilities(
 async def get_doctor_availabilities(
     doctor_id: str,
     future_only: bool = Query(True, description="Filter for future dates only"),
+    is_booked: Optional[bool] = Query(
+        None,
+        description="Filter by booking status (True for booked, False for available)",
+    ),
     db: AsyncSession = Depends(get_db),
 ) -> AvailabilityListResponseSchema:
     """Get all availability slots for a specific doctor. Public endpoint."""
     availabilities = await get_availabilities_by_doctor(
-        db=db, doctor_id=doctor_id, future_only=future_only
+        db=db, doctor_id=doctor_id, future_only=future_only, is_booked=is_booked
     )
     availability_responses = [
         AvailabilityResponseSchema.model_validate(avail) for avail in availabilities

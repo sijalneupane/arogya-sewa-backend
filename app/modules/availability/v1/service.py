@@ -6,6 +6,7 @@ from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
@@ -43,10 +44,12 @@ async def create_availability(
                 )
             )
         )
-        if overlap_result.scalar_one_or_none():
+        overlapping = overlap_result.scalar_one_or_none()
+        if overlapping:
             raise HTTPException(
                 status_code=400,
-                detail="Availability slot overlaps with an existing slot",
+                detail="Availability slot overlaps with an existing slot"
+                + overlapping.availability_id,
             )
 
         # Create availability
@@ -66,7 +69,7 @@ async def create_availability(
         # Return with doctor relationship loaded
         result = await db.execute(
             select(Availability)
-            .options(selectinload(Availability.doctor))
+            .options(selectinload(Availability.doctor).selectinload(Doctor.user))
             .where(Availability.availability_id == availability.availability_id)
         )
         return result.scalar_one()
@@ -85,7 +88,7 @@ async def get_availability_by_id(
     """Get a specific availability by ID"""
     result = await db.execute(
         select(Availability)
-        .options(selectinload(Availability.doctor))
+        .options(selectinload(Availability.doctor).selectinload(Doctor.user))
         .where(Availability.availability_id == availability_id)
     )
     availability = result.scalar_one_or_none()
@@ -95,7 +98,10 @@ async def get_availability_by_id(
 
 
 async def get_availabilities_by_doctor(
-    db: AsyncSession, doctor_id: str, future_only: bool = True
+    db: AsyncSession,
+    doctor_id: str,
+    future_only: bool = True,
+    is_booked: Optional[bool] = None,
 ) -> List[Availability]:
     """Get all availabilities for a specific doctor"""
     # Verify doctor exists
@@ -108,7 +114,7 @@ async def get_availabilities_by_doctor(
     # Build query
     query = (
         select(Availability)
-        .options(selectinload(Availability.doctor))
+        .options(selectinload(Availability.doctor).selectinload(Doctor.user))
         .where(Availability.doctor_id == doctor_id)
     )
 
@@ -119,6 +125,10 @@ async def get_availabilities_by_doctor(
         today = date_class.today()
         query = query.where(Availability.date >= today)
 
+    # Filter by booking status if specified
+    if is_booked is not None:
+        query = query.where(Availability.is_booked == is_booked)
+
     query = query.order_by(Availability.date, Availability.start_time)
 
     result = await db.execute(query)
@@ -126,10 +136,12 @@ async def get_availabilities_by_doctor(
 
 
 async def get_all_availabilities(
-    db: AsyncSession, future_only: bool = True
+    db: AsyncSession, future_only: bool = True, is_booked: Optional[bool] = None
 ) -> List[Availability]:
     """Get all availabilities across all doctors"""
-    query = select(Availability).options(selectinload(Availability.doctor))
+    query = select(Availability).options(
+        selectinload(Availability.doctor).selectinload(Doctor.user)
+    )
 
     # Filter for future dates if requested
     if future_only:
@@ -137,6 +149,10 @@ async def get_all_availabilities(
 
         today = date_class.today()
         query = query.where(Availability.date >= today)
+
+    # Filter by booking status if specified
+    if is_booked is not None:
+        query = query.where(Availability.is_booked == is_booked)
 
     query = query.order_by(Availability.date, Availability.start_time)
 
@@ -257,7 +273,7 @@ async def can_user_modify_availability(
         return True
 
     # Check if user is hospital admin for doctor's hospital
-    if user.hospital and user.role.name == "HOSPITAL_ADMIN":
+    if user.hospital and user.role.role == RoleEnum.HOSPITAL_ADMIN:
         # Get the doctor's hospital
         doctor_result = await db.execute(
             select(Doctor).where(Doctor.doctor_id == doctor_id)
