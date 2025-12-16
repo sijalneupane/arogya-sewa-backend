@@ -44,6 +44,10 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/hospital/{hospital_id}", writeMethods
         ),
+        setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/{appointment_id}", readOnlyMethods
+        ),
     ]
 
 
@@ -66,12 +70,26 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
             "/api/v1/availabilities/{availability_id}",
             writeMethods,
         ),
+        setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointments/{appointment_id}",
+            readOnlyMethods + writeMethods,
+        ),
     ]
 
 
 def getUserPermissions(role: Role) -> List[Authorization]:
     return [
         setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments", postMethod + readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointments/{appointment_id}",
+            readOnlyMethods + writeMethods,
+        ),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
         # )
@@ -87,6 +105,10 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
             role,
             "/api/v1/availabilities/{availability_id}",
             writeMethods,
+        ),
+        setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/{appointment_id}", readOnlyMethods
         ),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods

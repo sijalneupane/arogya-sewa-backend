@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,9 +63,25 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalar_one_or_none()
 
 
-async def get_user_list(db: AsyncSession):
+async def get_user_list(db: AsyncSession, role: Optional[RoleEnum] = None):
+    """
+    Get list of users, optionally filtered by role.
+
+    Args:
+        db: Database session
+        role: Optional role to filter by
+
+    Returns:
+        UserListResponse with list of users
+    """
     try:
-        result = await db.execute(select(User).options(selectinload(User.role)))
+        query = select(User).options(selectinload(User.role))
+
+        # Apply role filter if provided
+        if role:
+            query = query.join(Role).where(Role.role == role)
+
+        result = await db.execute(query)
         userresult = result.scalars().all()
         reusltList = [UserResponse.model_validate(user) for user in userresult]
         return UserListResponse(data=reusltList)
