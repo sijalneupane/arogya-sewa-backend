@@ -1,4 +1,5 @@
 from datetime import date
+from math import ceil
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -6,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums.role_enum import RoleEnum
+from app.common.schema.pagination import PaginationMeta
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
@@ -21,7 +23,6 @@ from app.modules.appointment.v1.service import (
     delete_appointment,
     get_all_appointments_super_admin,
     get_appointment_by_id,
-    get_appointments_for_user,
     get_doctor_appointments,
     get_hospital_admin_appointments,
     get_patient_appointments,
@@ -88,8 +89,8 @@ async def book_appointment(
 
 @router.get("/admin/all", summary="Get all appointments (Super Admin)")
 async def list_all_appointments_super_admin(
-    hospital_id: Optional[str] = Query(None, description="Filter by hospital ID"),
-    doctor_id: Optional[str] = Query(None, description="Filter by doctor ID"),
+    hospital_name: Optional[str] = Query(None, description="Search by hospital name"),
+    doctor_name: Optional[str] = Query(None, description="Search by doctor name"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
     patient_name: Optional[str] = Query(None, description="Search by patient name"),
     status: Optional[str] = Query(None, description="Filter by appointment status"),
@@ -102,10 +103,8 @@ async def list_all_appointments_super_admin(
     appointment_date: Optional[date] = Query(
         None, description="Filter by specific appointment date"
     ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    ),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    size: int = Query(100, ge=1, le=500, description="Number of items per page"),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
@@ -115,8 +114,8 @@ async def list_all_appointments_super_admin(
     **Only accessible by Super Admin.**
 
     Filters available:
-    - Hospital ID
-    - Doctor ID
+    - Hospital name (partial search)
+    - Doctor name (partial search)
     - Patient ID or name
     - Appointment status
     - Date filtering (specific date, date range)
@@ -131,16 +130,16 @@ async def list_all_appointments_super_admin(
     # Get appointments
     appointments, total = await get_all_appointments_super_admin(
         db=db,
-        hospital_id=hospital_id,
-        doctor_id=doctor_id,
+        hospital_name=hospital_name,
+        doctor_name=doctor_name,
         patient_id=patient_id,
         patient_name=patient_name,
         status=status,
         date_from=date_from,
         date_to=date_to,
         appointment_date=appointment_date,
-        skip=skip,
-        limit=limit,
+        page=page,
+        size=size,
     )
 
     # Use Pydantic schema validation instead of format_appointment_detail
@@ -151,10 +150,19 @@ async def list_all_appointments_super_admin(
         for appointment in appointments
     ]
 
+    # Calculate pagination metadata
+    total_pages = ceil(total / size) if total > 0 else 0
+    pagination_meta = PaginationMeta(
+        currentPage=page,
+        totalPages=total_pages,
+        pageSize=size,
+        totalRecords=total,
+    )
+
     return AppointmentListResponse(
         message="Appointments retrieved successfully",
-        total=total,
         data=appointment_details,
+        paginationMeta=pagination_meta,
     )
 
 
@@ -170,10 +178,8 @@ async def list_patient_appointments(
     appointment_date: Optional[date] = Query(
         None, description="Filter by specific appointment date"
     ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    ),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    size: int = Query(100, ge=1, le=500, description="Number of items per page"),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
@@ -201,8 +207,8 @@ async def list_patient_appointments(
         date_from=date_from,
         date_to=date_to,
         appointment_date=appointment_date,
-        skip=skip,
-        limit=limit,
+        page=page,
+        size=size,
     )
 
     # Use Pydantic schema validation instead of format_appointment_detail
@@ -213,10 +219,19 @@ async def list_patient_appointments(
         for appointment in appointments
     ]
 
+    # Calculate pagination metadata
+    total_pages = ceil(total / size) if total > 0 else 0
+    pagination_meta = PaginationMeta(
+        currentPage=page,
+        totalPages=total_pages,
+        pageSize=size,
+        totalRecords=total,
+    )
+
     return AppointmentListResponse(
         message="Appointments retrieved successfully",
-        total=total,
         data=appointment_details,
+        paginationMeta=pagination_meta,
     )
 
 
@@ -232,10 +247,8 @@ async def list_doctor_appointments(
     appointment_date: Optional[date] = Query(
         None, description="Filter by specific appointment date"
     ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    ),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    size: int = Query(100, ge=1, le=500, description="Number of items per page"),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
@@ -263,8 +276,8 @@ async def list_doctor_appointments(
         date_from=date_from,
         date_to=date_to,
         appointment_date=appointment_date,
-        skip=skip,
-        limit=limit,
+        page=page,
+        size=size,
     )
 
     # Use Pydantic schema validation instead of format_appointment_detail
@@ -275,10 +288,19 @@ async def list_doctor_appointments(
         for appointment in appointments
     ]
 
+    # Calculate pagination metadata
+    total_pages = ceil(total / size) if total > 0 else 0
+    pagination_meta = PaginationMeta(
+        currentPage=page,
+        totalPages=total_pages,
+        pageSize=size,
+        totalRecords=total,
+    )
+
     return AppointmentListResponse(
         message="Appointments retrieved successfully",
-        total=total,
         data=appointment_details,
+        paginationMeta=pagination_meta,
     )
 
 
@@ -286,8 +308,8 @@ async def list_doctor_appointments(
     "/hospital-admin/appointments", summary="Get hospital appointments (Hospital Admin)"
 )
 async def list_hospital_admin_appointments(
-    doctor_id: Optional[str] = Query(
-        None, description="Filter by doctor ID in their hospital"
+    doctor_name: Optional[str] = Query(
+        None, description="Search by doctor name in their hospital"
     ),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
     patient_name: Optional[str] = Query(None, description="Search by patient name"),
@@ -301,10 +323,8 @@ async def list_hospital_admin_appointments(
     appointment_date: Optional[date] = Query(
         None, description="Filter by specific appointment date"
     ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    ),
+    page: int = Query(1, ge=1, description="Page number (1-indexed)"),
+    size: int = Query(100, ge=1, le=500, description="Number of items per page"),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
@@ -314,7 +334,7 @@ async def list_hospital_admin_appointments(
     **Only accessible by Hospital Admin.**
 
     Filters available:
-    - Doctor ID (within their hospital)
+    - Doctor name (within their hospital)
     - Patient ID or name
     - Appointment status
     - Date filtering (specific date, date range)
@@ -330,15 +350,15 @@ async def list_hospital_admin_appointments(
     appointments, total = await get_hospital_admin_appointments(
         db=db,
         user_id=user.sub,
-        doctor_id=doctor_id,
+        doctor_name=doctor_name,
         patient_id=patient_id,
         patient_name=patient_name,
         status=status,
         date_from=date_from,
         date_to=date_to,
         appointment_date=appointment_date,
-        skip=skip,
-        limit=limit,
+        page=page,
+        size=size,
     )
 
     # Use Pydantic schema validation instead of format_appointment_detail
@@ -349,78 +369,19 @@ async def list_hospital_admin_appointments(
         for appointment in appointments
     ]
 
-    return AppointmentListResponse(
-        message="Appointments retrieved successfully",
-        total=total,
-        data=appointment_details,
+    # Calculate pagination metadata
+    total_pages = ceil(total / size) if total > 0 else 0
+    pagination_meta = PaginationMeta(
+        currentPage=page,
+        totalPages=total_pages,
+        pageSize=size,
+        totalRecords=total,
     )
-
-
-@router.get(
-    "",
-    summary="Get appointments (DEPRECATED - Use role-specific endpoints)",
-    deprecated=True,
-)
-async def list_appointments(
-    hospital_id: Optional[str] = Query(
-        None, description="Filter by hospital (super admin only)"
-    ),
-    doctor_id: Optional[str] = Query(None, description="Filter by doctor ID"),
-    patient_name: Optional[str] = Query(
-        None, description="Filter by patient name (super admin only)"
-    ),
-    appointment_date: Optional[date] = Query(
-        None, description="Filter by appointment date"
-    ),
-    skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    ),
-    db: AsyncSession = Depends(get_db),
-    user: JwtPayload = Depends(get_current_user),
-    _=Depends(authorize),
-) -> AppointmentListResponse:
-    """
-    **DEPRECATED:** This endpoint is deprecated. Please use the role-specific endpoints:
-    - Super Admin: `/appointments/admin/all`
-    - Patient: `/appointments/patient/my-appointments`
-    - Doctor: `/appointments/doctor/my-appointments`
-    - Hospital Admin: `/appointments/hospital-admin/appointments`
-
-    Get appointments based on user role.
-
-    - **Super Admin**: Can view all appointments with filters (hospital, doctor, patient name, date)
-    - **Hospital Admin**: Can view appointments for doctors in their hospital
-    - **Doctor**: Can only view their own appointments
-    - **Patient**: Can only view their own appointments
-    """
-    # Get appointments based on role
-    appointments, total = await get_appointments_for_user(
-        db=db,
-        user_id=user.sub,
-        user_role=user.role,
-        hospital_id=hospital_id if user.role == RoleEnum.SUPER_ADMIN else None,
-        doctor_id=doctor_id
-        if user.role in [RoleEnum.SUPER_ADMIN, RoleEnum.HOSPITAL_ADMIN]
-        else None,
-        patient_name=patient_name if user.role == RoleEnum.SUPER_ADMIN else None,
-        appointment_date=appointment_date,
-        skip=skip,
-        limit=limit,
-    )
-
-    # Use Pydantic schema validation instead of format_appointment_detail
-    from app.modules.appointment.v1.schema import AppointmentDetailResponseSchema
-
-    appointment_details = [
-        AppointmentDetailResponseSchema.model_validate(appointment)
-        for appointment in appointments
-    ]
 
     return AppointmentListResponse(
         message="Appointments retrieved successfully",
-        total=total,
         data=appointment_details,
+        paginationMeta=pagination_meta,
     )
 
 

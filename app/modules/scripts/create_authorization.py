@@ -44,9 +44,13 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/hospital/{hospital_id}", writeMethods
         ),
+        # Super admin can view all appointments
         setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
         setAuthorizationPermissions(
             role, "/api/v1/appointments/{appointment_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/admin/all", readOnlyMethods
         ),
     ]
 
@@ -70,11 +74,15 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
             "/api/v1/availabilities/{availability_id}",
             writeMethods,
         ),
+        # Hospital admin can view and manage appointments for their hospital
         setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
         setAuthorizationPermissions(
             role,
             "/api/v1/appointments/{appointment_id}",
             readOnlyMethods + writeMethods,
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/hospital-admin/appointments", readOnlyMethods
         ),
     ]
 
@@ -82,6 +90,7 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
 def getUserPermissions(role: Role) -> List[Authorization]:
     return [
         setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
+        # Patient can book and view their appointments
         setAuthorizationPermissions(
             role, "/api/v1/appointments", postMethod + readOnlyMethods
         ),
@@ -89,6 +98,9 @@ def getUserPermissions(role: Role) -> List[Authorization]:
             role,
             "/api/v1/appointments/{appointment_id}",
             readOnlyMethods + writeMethods,
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/patient/my-appointments", readOnlyMethods
         ),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
@@ -106,9 +118,13 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
             "/api/v1/availabilities/{availability_id}",
             writeMethods,
         ),
+        # Doctor can view their appointments
         setAuthorizationPermissions(role, "/api/v1/appointments", readOnlyMethods),
         setAuthorizationPermissions(
             role, "/api/v1/appointments/{appointment_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/doctor/my-appointments", readOnlyMethods
         ),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods

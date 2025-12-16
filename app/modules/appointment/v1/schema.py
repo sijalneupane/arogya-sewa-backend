@@ -4,6 +4,8 @@ from typing import Annotated, Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.common.schema.pagination import PaginationMeta
+
 
 class AppointmentStatusEnum(StrEnum):
     SCHEDULED = "scheduled"
@@ -168,11 +170,11 @@ class AppointmentDetailResponseSchema(BaseModel):
 
 
 class AppointmentListResponse(BaseModel):
-    """Response for list of appointments"""
+    """Response for list of appointments with pagination metadata"""
 
     message: str
-    total: int
     data: list[AppointmentDetailResponseSchema]
+    paginationMeta: PaginationMeta
 
 
 class AppointmentSingleResponse(BaseModel):
@@ -188,8 +190,8 @@ class AppointmentSingleResponse(BaseModel):
 class SuperAdminAppointmentFilters(BaseModel):
     """Filter parameters for super admin - can filter by anything"""
 
-    hospital_id: Optional[str] = Field(None, description="Filter by hospital ID")
-    doctor_id: Optional[str] = Field(None, description="Filter by doctor ID")
+    hospital_name: Optional[str] = Field(None, description="Search by hospital name")
+    doctor_name: Optional[str] = Field(None, description="Search by doctor name")
     patient_id: Optional[str] = Field(None, description="Filter by patient ID")
     patient_name: Optional[str] = Field(None, description="Search by patient name")
     status: Optional[AppointmentStatusEnum] = Field(
@@ -203,18 +205,14 @@ class SuperAdminAppointmentFilters(BaseModel):
     )
     appointment_date: Optional[date] = Field(
         None, description="Filter by specific appointment date"
-    )
-    skip: int = Field(0, ge=0, description="Number of records to skip")
-    limit: int = Field(
-        100, ge=1, le=500, description="Maximum number of records to return"
     )
 
 
 class HospitalAdminAppointmentFilters(BaseModel):
     """Filter parameters for hospital admin - can filter their hospital's appointments"""
 
-    doctor_id: Optional[str] = Field(
-        None, description="Filter by doctor ID in their hospital"
+    doctor_name: Optional[str] = Field(
+        None, description="Search by doctor name in their hospital"
     )
     patient_id: Optional[str] = Field(None, description="Filter by patient ID")
     patient_name: Optional[str] = Field(None, description="Search by patient name")
@@ -229,10 +227,6 @@ class HospitalAdminAppointmentFilters(BaseModel):
     )
     appointment_date: Optional[date] = Field(
         None, description="Filter by specific appointment date"
-    )
-    skip: int = Field(0, ge=0, description="Number of records to skip")
-    limit: int = Field(
-        100, ge=1, le=500, description="Maximum number of records to return"
     )
 
 
@@ -251,10 +245,6 @@ class DoctorAppointmentFilters(BaseModel):
     appointment_date: Optional[date] = Field(
         None, description="Filter by specific appointment date"
     )
-    skip: int = Field(0, ge=0, description="Number of records to skip")
-    limit: int = Field(
-        100, ge=1, le=500, description="Maximum number of records to return"
-    )
 
 
 class PatientAppointmentFilters(BaseModel):
@@ -271,8 +261,4 @@ class PatientAppointmentFilters(BaseModel):
     )
     appointment_date: Optional[date] = Field(
         None, description="Filter by specific appointment date"
-    )
-    skip: int = Field(0, ge=0, description="Number of records to skip")
-    limit: int = Field(
-        100, ge=1, le=500, description="Maximum number of records to return"
     )
