@@ -14,7 +14,7 @@ from app.modules.doctor.v1.schema import (
     DoctorWithHospitalResponseSchema,
 )
 from app.modules.file.v1.models import File
-from app.modules.file.v1.service import deleteFile
+from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
 from app.modules.user.v1.service import create_user, update_user_role
@@ -459,7 +459,7 @@ async def delete_doctor(
 
         await db.delete(doctor)
         if doctor.license_certificate:
-            await deleteFile(db, doctor.license_certificate.file_id)
+            await delete_file(db, doctor.license_certificate.file_id)
         await db.delete(doctor.user)  # Also delete associated user account
         await db.commit()
         return {"message": "Doctor deleted successfully"}

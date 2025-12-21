@@ -12,7 +12,7 @@ from app.modules.cloudinary.service import (
 from app.modules.file.v1.models import File
 
 
-async def saveFile(
+async def save_file(
     db: AsyncSession,
     file: UploadFile,
     uploaded_by: str,
@@ -47,7 +47,32 @@ async def saveFile(
         raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
 
 
-async def deleteFile(db: AsyncSession, file_id: str):
+async def update_file(
+    db: AsyncSession,
+    file: UploadFile,
+    # file_type: FileTypeEnum,
+    file_id: str,
+):
+    try:
+        file_query = db.execute(select(File).where(File.file_id == file_id))
+        file_obj = (await file_query).scalar_one_or_none()
+        if not file_obj:
+            raise HTTPException(status_code=404, detail="File not found")
+        new_url, new_public_id = await upload_file_cloudinary(
+            file, folder="arogyga_images"
+        )
+        await delete_file_cloudinary(file_obj.public_id)
+        file_obj.public_id = new_public_id
+        file_obj.file_url = new_url
+        db.add(file_obj)
+        await db.commit()
+        await db.refresh(file_obj)
+        return file_obj
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
+
+
+async def delete_file(db: AsyncSession, file_id: str):
     try:
         result = await db.execute(select(File).where(File.file_id == file_id))
         file_obj = result.scalar_one_or_none()

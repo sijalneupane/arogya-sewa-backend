@@ -8,7 +8,7 @@ from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules import hospital
 from app.modules.file.v1.models import File
-from app.modules.file.v1.service import deleteFile
+from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1 import service as UserService
 from app.modules.user.v1.models import User
@@ -252,7 +252,7 @@ async def delete_hospital(
 
         # Delete associated license file if exists
         if hospital.hospital_license:
-            await deleteFile(db, hospital.hospital_license.file_id)
+            await delete_file(db, hospital.hospital_license.file_id)
 
         await db.delete(hospital.admin)
         await db.delete(hospital)
