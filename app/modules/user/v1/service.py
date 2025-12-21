@@ -103,6 +103,69 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
         raise e
 
 
+async def update_user(
+    db: AsyncSession,
+    user_id: str,
+    current_user_id: str,
+    role: RoleEnum,
+    email: Optional[str] = None,
+    name: Optional[str] = None,
+    phone_number: Optional[str] = None,
+):
+    """Update user account details."""
+    try:
+        # Get the user
+        result = await db.execute(
+            select(User).options(selectinload(User.role)).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Authorization check
+        # Super admin can update any user
+        # Other users can only update their own account
+        if role != RoleEnum.SUPER_ADMIN and user_id != current_user_id:
+            raise HTTPException(
+                status_code=403,
+                detail="Access denied. You can only update your own account.",
+            )
+
+        # Check if email is being changed and if it's already taken
+        if email is not None and email != user.email:
+            email_check = await db.execute(select(User).where(User.email == email))
+            existing_user = email_check.scalar_one_or_none()
+            if existing_user:
+                raise HTTPException(
+                    status_code=400, detail="Email is already registered"
+                )
+            user.email = email
+
+        # Update fields if provided
+        if name is not None:
+            user.name = name
+        if phone_number is not None:
+            user.phone_number = phone_number
+
+        await db.commit()
+        await db.refresh(user)
+
+        # Reload with relationships
+        result = await db.execute(
+            select(User).options(selectinload(User.role)).where(User.id == user_id)
+        )
+        updated_user = result.scalar_one()
+
+        return updated_user
+
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 async def update_user_role(db: AsyncSession, user_id: str, new_role: RoleEnum) -> User:
     """Update user role. Used internally for role upgrades."""
     try:

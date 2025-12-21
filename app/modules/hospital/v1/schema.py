@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.modules.user.v1.schema import UserResponse
+from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
 class HospitalCreateSchema(BaseModel):
@@ -15,10 +15,7 @@ class HospitalCreateSchema(BaseModel):
     opened_date: date = Field(
         ..., description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
-    admin_name: str
-    admin_email: EmailStr
-    admin_password: str
-    admin_phone: str
+    admin_details: UserCreate
 
 
 class HospitalUpdateSchema(BaseModel):
@@ -42,6 +39,8 @@ class HospitalResponseSchema(BaseModel):
     longitude: float
     contact_number: list[str]
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
+    created_at: datetime
+    updated_at: datetime
     admin: UserResponse
 
 
@@ -53,3 +52,22 @@ class HospitalListResponseSchema(BaseModel):
 class HospitalDetailResponseSchema(BaseModel):
     message: str = "Hospital fetched successfully"
     data: HospitalResponseSchema
+
+
+class AdminHospitalResponseSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    hospital_id: str
+    name: str
+    location: str
+    latitude: float
+    longitude: float
+    contact_number: list[str]
+    opened_date: date  # ISO 8601 date (YYYY-MM-DD)
+    created_at: datetime
+    updated_at: datetime
+
+
+class AdminHospitalDetailResponseSchema(BaseModel):
+    message: str = "Hospital fetched successfully"
+    data: AdminHospitalResponseSchema

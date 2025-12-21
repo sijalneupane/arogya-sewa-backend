@@ -7,8 +7,14 @@ from app.common.enums.role_enum import RoleEnum
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
-from app.modules.user.v1.schema import UserByIdResponse, UserListResponse
-from app.modules.user.v1.service import get_user_by_id, get_user_list
+from app.modules.auth.v1.schemas import JwtPayload
+from app.modules.user.v1.schema import (
+    UserByIdResponse,
+    UserListResponse,
+    UserUpdate,
+    UserUpdateResponse,
+)
+from app.modules.user.v1.service import get_user_by_id, get_user_list, update_user
 
 router = APIRouter(
     prefix="/users",
@@ -41,3 +47,36 @@ async def get_user(
     _=Depends(authorize),
 ):
     return await get_user_by_id(db, user_id)
+
+
+@router.patch(
+    "/{user_id}",
+    response_model=UserUpdateResponse,
+    summary="Update user account",
+)
+async def update_user_account(
+    user_id: str,
+    data: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+):
+    """
+    Update user account details.
+
+    - Users can update their own account
+    - Super admins can update any user account
+    - Updatable fields: email, name, phone_number
+    """
+    updated_user = await update_user(
+        db=db,
+        user_id=user_id,
+        current_user_id=current_user.sub,
+        role=current_user.role,
+        **data.model_dump(exclude_unset=True),
+    )
+
+    from app.modules.user.v1.schema import UserResponse
+
+    user_response = UserResponse.model_validate(updated_user)
+    return UserUpdateResponse(data=user_response)

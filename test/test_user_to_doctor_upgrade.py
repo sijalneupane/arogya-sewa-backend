@@ -29,7 +29,7 @@ def test_upgrade_schema_validation():
         print("✅ Upgrade schema validation successful!")
         print(f"Specialization: {validated_upgrade.specialization_department}")
         print(f"Experience: {validated_upgrade.experience_years} years")
-        print(f"License: {validated_upgrade.license_certificate}")
+        print(f"License: {validated_upgrade.license_certificate_id}")
 
         # Test validation with invalid data
         try:

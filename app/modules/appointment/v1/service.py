@@ -120,6 +120,7 @@ async def get_appointment_by_id(
             selectinload(Appointment.doctor).selectinload(Doctor.user),
             selectinload(Appointment.availability),
             selectinload(Appointment.booked_by),
+            selectinload(Appointment.changed_times),
         )
         .where(Appointment.appointment_id == appointment_id)
     )
@@ -303,6 +304,7 @@ async def get_all_appointments_super_admin(
         selectinload(Appointment.doctor).selectinload(Doctor.user),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by),
+        selectinload(Appointment.changed_times),
     )
 
     # Build filter conditions
@@ -420,6 +422,7 @@ async def get_patient_appointments(
         selectinload(Appointment.doctor).selectinload(Doctor.user),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by),
+        selectinload(Appointment.changed_times),
     )
 
     # Build filter conditions
@@ -500,6 +503,7 @@ async def get_doctor_appointments(
         selectinload(Appointment.doctor).selectinload(Doctor.user),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by),
+        selectinload(Appointment.changed_times),
     )
 
     # Build filter conditions
@@ -593,6 +597,7 @@ async def get_hospital_admin_appointments(
             selectinload(Appointment.doctor).selectinload(Doctor.user),
             selectinload(Appointment.availability),
             selectinload(Appointment.booked_by),
+            selectinload(Appointment.changed_times),
         )
     )
 

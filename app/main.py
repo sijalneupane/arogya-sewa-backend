@@ -10,6 +10,7 @@ from app.core.configuration.cloudinary_config import configure_cloudinary
 from app.modules.auth.v1 import router as auth_router
 from app.modules.availability.v1 import router as availability_router
 from app.modules.appointment.v1 import router as appointment_router
+from app.modules.appointment.v1 import changed_time_router
 from app.modules.doctor.v1 import router as doctor_router
 from app.modules.hospital.v1 import router as hospital_router
 from app.modules.user.v1 import router as user_router
@@ -80,4 +81,5 @@ app.include_router(hospital_router.router, prefix=settings.API_V1_STR)
 app.include_router(doctor_router.router, prefix=settings.API_V1_STR)
 app.include_router(availability_router.router, prefix=settings.API_V1_STR)
 app.include_router(appointment_router.router, prefix=settings.API_V1_STR)
+app.include_router(changed_time_router.router, prefix=settings.API_V1_STR)
 app.include_router(file_router.router, prefix=settings.API_V1_STR)

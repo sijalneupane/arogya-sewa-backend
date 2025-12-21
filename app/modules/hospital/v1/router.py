@@ -7,6 +7,8 @@ from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.hospital.v1.schema import (
+    AdminHospitalDetailResponseSchema,
+    AdminHospitalResponseSchema,
     HospitalCreateSchema,
     HospitalDetailResponseSchema,
     HospitalListResponseSchema,
@@ -38,7 +40,16 @@ async def create_hospital(
     ),
     _=Depends(authorize),
 ):
-    created_hospital = await add_hospital(**data.model_dump(), db=db)
+    created_hospital = await add_hospital(
+        admin_details=data.admin_details,
+        contact_number=data.contact_number,
+        db=db,
+        name=data.name,
+        location=data.location,
+        latitude=data.latitude,
+        longitude=data.longitude,
+        opened_date=data.opened_date,
+    )
     response = HospitalResponseSchema.model_validate(created_hospital)
     return {"message": "Hospital created successfully", "data": response}
 
@@ -60,10 +71,10 @@ async def get_own_hospital(
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     # _=Depends(authorize),
-) -> HospitalDetailResponseSchema:
+) -> AdminHospitalDetailResponseSchema:
     hospital = await get_hospital_by_admin_id(db=db, admin_id=user.sub)
-    response = HospitalResponseSchema.model_validate(hospital)
-    return HospitalDetailResponseSchema(data=response)
+    response = AdminHospitalResponseSchema.model_validate(hospital)
+    return AdminHospitalDetailResponseSchema(data=response)
 
 
 @router.get("/nearest", summary="Get closest hospitals to user's location")
@@ -114,3 +125,14 @@ async def update_hospital_details(
     return HospitalDetailResponseSchema(
         message="Hospital updated successfully", data=response
     )
+
+@router.delete("/{hospital_id}", summary="Delete a hospital (Not implemented)")
+async def delete_hospital(
+    hospital_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    # _=Depends(authorize),
+):
+    """Delete a hospital by its ID. (Functionality not implemented yet)"""
+    # Implementation would go here
+    return {"message": "Delete hospital functionality is not implemented yet."}

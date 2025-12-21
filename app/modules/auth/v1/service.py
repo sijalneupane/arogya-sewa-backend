@@ -76,7 +76,7 @@ async def signup_doctor(
     password: str,
     specialization_department: str,
     experience_years: int,
-    license_certificate: str,
+    license_certificate_id: str,
 ):
     """Create a user with doctor role and corresponding doctor record."""
     try:
@@ -96,7 +96,7 @@ async def signup_doctor(
             user_id=user.id,
             specialization_department=specialization_department,
             experience_years=experience_years,
-            license_certificate=license_certificate,
+            license_certificate=license_certificate_id,
             hospital_id=None,  # No hospital assigned initially
         )
 
@@ -171,9 +171,9 @@ async def login_user(db: AsyncSession, email: str, password: str):
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
         payload = JwtPayload(sub=user.id, name=user.name, role=user.role.role)
-        print(
-            f"Creating JWT with payload: sub={user.id}, name={user.name}, role={user.role.role}"
-        )
+        # print(
+        #     f"Creating JWT with payload: sub={user.id}, name={user.name}, role={user.role.role}"
+        # )
         access = create_access_token(payload)
         refresh = create_refresh_token({"sub": user.id})
 

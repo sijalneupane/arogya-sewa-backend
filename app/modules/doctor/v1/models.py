@@ -8,6 +8,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.modules.availability.v1.models import Availability
+    from app.modules.file.v1.models import File
     from app.modules.hospital.v1.models import Hospital
     from app.modules.user.v1.models import User
 
@@ -18,7 +19,13 @@ class Doctor(Base, TimestampMixin):
     doctor_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     specialization_department: Mapped[str] = mapped_column(String(100), nullable=False)
     experience_years: Mapped[int] = mapped_column(Integer, nullable=False)
-    license_certificate: Mapped[str] = mapped_column(String(100), nullable=False)
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    booking_fee: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    license_certificate_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("file.file_id"),
+        nullable=True,
+    )
 
     # Foreign key to User (required)
     user_id: Mapped[str] = mapped_column(
@@ -31,6 +38,9 @@ class Doctor(Base, TimestampMixin):
     )
 
     # Relationships
+    license_certificate: Mapped["File"] = relationship(
+        uselist=False, back_populates="doctor_license"
+    )
     user: Mapped["User"] = relationship(back_populates="doctor")
     hospital: Mapped[Optional["Hospital"]] = relationship(back_populates="doctors")
     availabilities: Mapped[list["Availability"]] = relationship(

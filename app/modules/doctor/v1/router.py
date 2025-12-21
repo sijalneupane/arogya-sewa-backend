@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import authorize
@@ -21,8 +21,9 @@ from app.modules.doctor.v1.service import (
     get_doctor_by_id,
     get_doctor_by_user_id,
     get_doctors_by_hospital,
+    get_doctors_of_logged_in_hospital_admin,
     update_doctor,
-    upgrade_user_to_doctor,
+    # upgrade_user_to_doctor,
 )
 
 router = APIRouter(
@@ -43,12 +44,13 @@ async def create_new_doctor(
         db=db,
         specialization_department=data.specialization_department,
         experience_years=data.experience_years,
-        license_certificate=data.license_certificate,
-        user_name=data.user_name,
-        user_email=data.user_email,
-        user_password=data.user_password,
-        user_phone=data.user_phone,
+        license_certificate=data.license_certificate_id,
+        user_name=data.user.name,
+        user_email=data.user.email,
+        user_password=data.user.password,
+        user_phone=data.user.phone_number,
         hospital_id=data.hospital_id,
+        hospital_admin_id=user.sub
     )
     response = DoctorResponseSchema.model_validate(created_doctor)
     return {"message": "Doctor created successfully", "data": response}
@@ -67,25 +69,25 @@ async def get_doctors(
     return DoctorListResponseSchema(data=doctor_responses)
 
 
-@router.post("/upgrade", summary="Upgrade current user to doctor")
-async def upgrade_current_user_to_doctor(
-    data: UserToDoctorUpgradeSchema,
-    db: AsyncSession = Depends(get_db),
-    user: JwtPayload = Depends(get_current_user),
-    # _=Depends(authorize),  # Any authenticated user can upgrade themselves
-) -> DoctorDetailResponseSchema:
-    """Upgrade the current user to a doctor. This will update user role to DOCTOR and create doctor profile."""
-    doctor = await upgrade_user_to_doctor(
-        db=db,
-        user_id=user.sub,
-        specialization_department=data.specialization_department,
-        experience_years=data.experience_years,
-        license_certificate=data.license_certificate,
-    )
-    response = DoctorWithHospitalResponseSchema.model_validate(doctor)
-    return DoctorDetailResponseSchema(
-        message="Successfully upgraded to doctor", data=response
-    )
+# @router.post("/upgrade", summary="Upgrade current user to doctor")
+# async def upgrade_current_user_to_doctor(
+#     data: UserToDoctorUpgradeSchema,
+#     db: AsyncSession = Depends(get_db),
+#     user: JwtPayload = Depends(get_current_user),
+#     # _=Depends(authorize),  # Any authenticated user can upgrade themselves
+# ) -> DoctorDetailResponseSchema:
+#     """Upgrade the current user to a doctor. This will update user role to DOCTOR and create doctor profile."""
+#     doctor = await upgrade_user_to_doctor(
+#         db=db,
+#         user_id=user.sub,
+#         specialization_department=data.specialization_department,
+#         experience_years=data.experience_years,
+#         license_certificate_id=data.license_certificate_id,
+#     )
+#     response = DoctorWithHospitalResponseSchema.model_validate(doctor)
+#     return DoctorDetailResponseSchema(
+#         message="Successfully upgraded to doctor", data=response
+#     )
 
 
 @router.get("/me", summary="Get own doctor profile")
@@ -98,6 +100,25 @@ async def get_own_doctor_profile(
     doctor = await get_doctor_by_user_id(db=db, user_id=user.sub)
     response = DoctorWithHospitalResponseSchema.model_validate(doctor)
     return DoctorDetailResponseSchema(data=response)
+
+
+@router.get("/hospital/my", summary="Get doctors by hospital of current admin")
+async def get_hospital_admin_doctors(
+    hospital_admin_id: JwtPayload = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    # _=Depends(authorize),
+) -> DoctorListResponseSchema:
+    """Get all doctors for a specific hospital."""
+    doctors = await get_doctors_of_logged_in_hospital_admin(
+        db=db, hospital_admin_id=hospital_admin_id.sub
+    )
+    doctor_responses = [
+        DoctorResponseSchema.model_validate(doctor) for doctor in doctors
+    ]
+    return DoctorListResponseSchema(
+        message=f"Doctors for hospital admin {hospital_admin_id.sub} fetched successfully",
+        data=doctor_responses,
+    )
 
 
 @router.get("/hospital/{hospital_id}", summary="Get doctors by hospital")

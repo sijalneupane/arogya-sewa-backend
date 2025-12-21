@@ -1,0 +1,247 @@
+from typing import Optional
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.common.enums.role_enum import RoleEnum
+from app.core.utils.string_utils import StringUtils
+from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
+from app.modules.appointment.v1.models import Appointment
+from app.modules.doctor.v1.models import Doctor
+from app.modules.hospital.v1.models import Hospital
+from app.modules.patient.v1.models import Patient
+
+
+async def can_user_view_changed_time(
+    db: AsyncSession,
+    changed_time: AppointmentChangedTime,
+    user_id: str,
+    user_role: str,
+) -> bool:
+    """
+    Check if user can view this changed time record.
+
+    Allowed viewers:
+    - Superadmin
+    - Hospital admin of the doctor's hospital
+    - The patient of the appointment
+    - The doctor of the appointment
+
+    Args:
+        db: Database session
+        changed_time: The changed time record
+        user_id: ID of the user trying to view
+        user_role: Role of the user
+
+    Returns:
+        True if user can view, False otherwise
+    """
+    # Superadmin can view all
+    if user_role == RoleEnum.SUPER_ADMIN.value:
+        return True
+
+    # Load the appointment with relationships
+    result = await db.execute(
+        select(Appointment)
+        .options(
+            selectinload(Appointment.patient),
+            selectinload(Appointment.doctor).selectinload(Doctor.hospital),
+        )
+        .where(Appointment.appointment_id == changed_time.appointment_id)
+    )
+    appointment = result.scalar_one_or_none()
+
+    if not appointment:
+        return False
+
+    # Check if user is the patient
+    patient_result = await db.execute(select(Patient).where(Patient.user_id == user_id))
+    patient = patient_result.scalar_one_or_none()
+    if patient and appointment.patient_id == patient.patient_id:
+        return True
+
+    # Check if user is the doctor
+    doctor_result = await db.execute(select(Doctor).where(Doctor.user_id == user_id))
+    doctor = doctor_result.scalar_one_or_none()
+    if doctor and appointment.doctor_id == doctor.doctor_id:
+        return True
+
+    # Check if user is hospital admin of the doctor's hospital
+    if user_role == RoleEnum.HOSPITAL_ADMIN.value and appointment.doctor.hospital:
+        hospital_result = await db.execute(
+            select(Hospital).where(
+                Hospital.hospital_id == appointment.doctor.hospital_id,
+                Hospital.admin_user_id == user_id,
+            )
+        )
+        hospital = hospital_result.scalar_one_or_none()
+        if hospital:
+            return True
+
+    return False
+
+
+async def can_user_modify_changed_time(
+    db: AsyncSession, user_id: str, user_role: str
+) -> bool:
+    """
+    Check if user can create/edit/delete changed time records.
+    Only doctors can modify changed time records.
+
+    Args:
+        db: Database session
+        user_id: ID of the user
+        user_role: Role of the user
+
+    Returns:
+        True if user is a doctor, False otherwise
+    """
+    # Check if user has a doctor profile
+    doctor_result = await db.execute(select(Doctor).where(Doctor.user_id == user_id))
+    doctor = doctor_result.scalar_one_or_none()
+    return doctor is not None
+
+
+async def create_changed_time(
+    db: AsyncSession,
+    appointment_id: str,
+    start_time,
+    end_time,
+    reason: Optional[str],
+    user_id: str,
+) -> AppointmentChangedTime:
+    """
+    Create a new changed time record for an appointment.
+
+    Args:
+        db: Database session
+        appointment_id: ID of the appointment
+        start_time: New start time
+        end_time: New end time
+        reason: Reason for the change
+        user_id: ID of the user making the change (must be doctor)
+
+    Returns:
+        Created changed time record
+
+    Raises:
+        HTTPException: If appointment not found
+    """
+    # Verify appointment exists
+    result = await db.execute(
+        select(Appointment).where(Appointment.appointment_id == appointment_id)
+    )
+    appointment = result.scalar_one_or_none()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Create changed time record
+    changed_time_id = StringUtils.randomAlphaNumeric(12)
+    changed_time = AppointmentChangedTime(
+        changed_time_id=changed_time_id,
+        appointment_id=appointment_id,
+        start_time=start_time,
+        end_time=end_time,
+        reason=reason,
+        changed_by_user_id=user_id,
+    )
+
+    db.add(changed_time)
+    await db.commit()
+    await db.refresh(changed_time)
+
+    return changed_time
+
+
+async def get_changed_time_by_id(
+    db: AsyncSession, changed_time_id: str
+) -> Optional[AppointmentChangedTime]:
+    """Get changed time record by ID"""
+    result = await db.execute(
+        select(AppointmentChangedTime)
+        .options(
+            selectinload(AppointmentChangedTime.appointment),
+            selectinload(AppointmentChangedTime.changed_by),
+        )
+        .where(AppointmentChangedTime.changed_time_id == changed_time_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_changed_times_for_appointment(
+    db: AsyncSession, appointment_id: str
+) -> list[AppointmentChangedTime]:
+    """Get all changed time records for an appointment"""
+    result = await db.execute(
+        select(AppointmentChangedTime)
+        .options(
+            selectinload(AppointmentChangedTime.changed_by),
+        )
+        .where(AppointmentChangedTime.appointment_id == appointment_id)
+        .order_by(AppointmentChangedTime.changed_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def update_changed_time(
+    db: AsyncSession,
+    changed_time_id: str,
+    start_time=None,
+    end_time=None,
+    reason: Optional[str] = None,
+) -> AppointmentChangedTime:
+    """
+    Update a changed time record.
+
+    Args:
+        db: Database session
+        changed_time_id: ID of the changed time record
+        start_time: Updated new start time
+        end_time: Updated new end time
+        reason: Updated reason
+
+    Returns:
+        Updated changed time record
+
+    Raises:
+        HTTPException: If changed time not found
+    """
+    changed_time = await get_changed_time_by_id(db, changed_time_id)
+
+    if not changed_time:
+        raise HTTPException(status_code=404, detail="Changed time record not found")
+
+    if start_time is not None:
+        changed_time.start_time = start_time
+    if end_time is not None:
+        changed_time.end_time = end_time
+    if reason is not None:
+        changed_time.reason = reason
+
+    await db.commit()
+    await db.refresh(changed_time)
+
+    return changed_time
+
+
+async def delete_changed_time(db: AsyncSession, changed_time_id: str) -> None:
+    """
+    Delete a changed time record.
+
+    Args:
+        db: Database session
+        changed_time_id: ID of the changed time record to delete
+
+    Raises:
+        HTTPException: If changed time not found
+    """
+    changed_time = await get_changed_time_by_id(db, changed_time_id)
+
+    if not changed_time:
+        raise HTTPException(status_code=404, detail="Changed time record not found")
+
+    await db.delete(changed_time)
+    await db.commit()

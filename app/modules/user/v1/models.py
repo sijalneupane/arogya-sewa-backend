@@ -35,7 +35,7 @@ class User(Base, TimestampMixin):
         back_populates="admin", uselist=False
     )
     doctor: Mapped[Optional["Doctor"]] = relationship(
-        back_populates="user", uselist=False
+        back_populates="user", uselist=False,
     )
     patient: Mapped[Optional["Patient"]] = relationship(
         back_populates="user", uselist=False

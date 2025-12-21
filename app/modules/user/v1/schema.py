@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 from pydantic import BaseModel, EmailStr, Field
 
@@ -25,43 +25,45 @@ class BloodGroupEnum(StrEnum):
 
 class UserCreate(BaseModel):
     email: EmailStr
-    name: str = Field(..., min_length=5, max_length=14)
+    name: str = Field(..., min_length=5, max_length=30)
     phone_number: str = Field(..., min_length=10, max_length=10)
-    password: str = Field(..., min_length=6, max_length=20)
-    role: RoleEnum
+    password: str = Field(..., min_length=6, max_length=30)
+    # role: RoleEnum
 
 
 class PatientSignupSchema(BaseModel):
     """Schema for patient signup - creates both user and patient records"""
 
-    email: EmailStr
-    name: str = Field(..., min_length=5, max_length=14)
-    phone_number: str = Field(..., min_length=10, max_length=10)
-    password: str = Field(..., min_length=6, max_length=20)
+    # email: EmailStr
+    # name: str = Field(..., min_length=5, max_length=14)
+    # phone_number: str = Field(..., min_length=10, max_length=10)
+    # password: str = Field(..., min_length=6, max_length=20)
     dob: date
     gender: GenderEnum
     blood_group: BloodGroupEnum
+    user: UserCreate
 
 
 class DoctorSignupSchema(BaseModel):
     """Schema for doctor signup - creates both user and doctor records"""
 
-    email: EmailStr
-    name: str = Field(..., min_length=5, max_length=14)
-    phone_number: str = Field(..., min_length=10, max_length=10)
-    password: str = Field(..., min_length=6, max_length=20)
+    # email: EmailStr
+    # name: str = Field(..., min_length=5, max_length=14)
+    # phone_number: str = Field(..., min_length=10, max_length=10)
+    # password: str = Field(..., min_length=6, max_length=20)
     specialization_department: str
     experience_years: int
-    license_certificate: str
+    license_certificate_id: str
+    user: UserCreate
 
 
-class SuperAdminSignupSchema(BaseModel):
+class SuperAdminSignupSchema(UserCreate):
     """Schema for super admin signup - only creates user record"""
 
-    email: EmailStr
-    name: str = Field(..., min_length=5, max_length=14)
-    phone_number: str = Field(..., min_length=10, max_length=10)
-    password: str = Field(..., min_length=6, max_length=20)
+    # email: EmailStr
+    # name: str = Field(..., min_length=5, max_length=14)
+    # phone_number: str = Field(..., min_length=10, max_length=10)
+    # password: str = Field(..., min_length=6, max_length=20)
 
 
 class UserLogin(BaseModel):
@@ -71,8 +73,8 @@ class UserLogin(BaseModel):
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None
-    name: str | None = None
-    password: str | None = None
+    name: str | None = Field(None, min_length=5, max_length=14)
+    phone_number: str | None = Field(None, min_length=10, max_length=10)
 
 
 class UserResponse(BaseModel):
@@ -82,6 +84,8 @@ class UserResponse(BaseModel):
     phone_number: str
     role: RoleNameDesResponse
     is_active: bool
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -94,6 +98,11 @@ class UserListResponse(BaseModel):
 
 class UserByIdResponse(BaseModel):
     message: str | None = "User fetched successfully"
+    data: UserResponse | None
+
+
+class UserUpdateResponse(BaseModel):
+    message: str | None = "User updated successfully"
     data: UserResponse | None
 
 

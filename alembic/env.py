@@ -17,6 +17,7 @@ from app.core.config import settings
 from app.modules.auth.v1.models import Authorization, Role
 from app.modules.availability.v1.models import Availability
 from app.modules.appointment.v1.models import Appointment
+from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
 from app.modules.doctor.v1.models import Doctor
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital

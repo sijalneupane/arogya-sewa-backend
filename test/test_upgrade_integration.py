@@ -29,7 +29,7 @@ def test_complete_workflow():
         upgrade_data = UserToDoctorUpgradeSchema(
             specialization_department="Emergency Medicine",
             experience_years=3,
-            license_certificate="MD67890",
+            license_certificate_id="MD67890",
         )
         print(f"   ✅ Schema validated: {upgrade_data.specialization_department}")
 

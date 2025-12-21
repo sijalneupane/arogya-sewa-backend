@@ -13,6 +13,19 @@ class AppointmentStatusEnum(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ChangedTimeInfo(BaseModel):
+    """Changed time information for appointment response"""
+
+    changed_time_id: str
+    start_time: time
+    end_time: time
+    reason: Optional[str]
+    changed_at: str
+
+    class Config:
+        from_attributes = True
+
+
 class AppointmentCreateSchema(BaseModel):
     """Schema for creating an appointment (booking)"""
 
@@ -106,6 +119,7 @@ class AppointmentDetailResponseSchema(BaseModel):
     notes: Optional[str]
     status: str
     booked_by_user_id: str
+    changed_times: list[ChangedTimeInfo]
     created_at: str
     updated_at: str
 
@@ -152,6 +166,20 @@ class AppointmentDetailResponseSchema(BaseModel):
                 end_time=data.availability.end_time,
             )
 
+            # Extract changed times info
+            changed_times_info = []
+            if hasattr(data, "changed_times") and data.changed_times:
+                for ct in data.changed_times:
+                    changed_times_info.append(
+                        ChangedTimeInfo(
+                            changed_time_id=ct.changed_time_id,
+                            start_time=ct.start_time,
+                            end_time=ct.end_time,
+                            reason=ct.reason,
+                            changed_at=ct.changed_at.isoformat(),
+                        )
+                    )
+
             return {
                 "appointment_id": data.appointment_id,
                 "patient": patient_info,
@@ -162,6 +190,7 @@ class AppointmentDetailResponseSchema(BaseModel):
                 "notes": data.notes,
                 "status": data.status,
                 "booked_by_user_id": data.booked_by_user_id,
+                "changed_times": changed_times_info,
                 "created_at": data.created_at.isoformat(),
                 "updated_at": data.updated_at.isoformat(),
             }

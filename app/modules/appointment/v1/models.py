@@ -8,6 +8,7 @@ from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
     from app.modules.availability.v1.models import Availability
     from app.modules.doctor.v1.models import Doctor
     from app.modules.patient.v1.models import Patient
@@ -55,6 +56,9 @@ class Appointment(Base, TimestampMixin):
     doctor: Mapped["Doctor"] = relationship()
     availability: Mapped["Availability"] = relationship()
     booked_by: Mapped["User"] = relationship()
+    changed_times: Mapped[list["AppointmentChangedTime"]] = relationship(
+        back_populates="appointment", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"Appointment(id={self.appointment_id}, patient_id={self.patient_id}, doctor_id={self.doctor_id}, status={self.status})"

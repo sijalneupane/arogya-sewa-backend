@@ -13,6 +13,8 @@ from app.modules.doctor.v1.schema import (
     DoctorResponseSchema,
     DoctorWithHospitalResponseSchema,
 )
+from app.modules.file.v1.models import File
+from app.modules.file.v1.service import deleteFile
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
 from app.modules.user.v1.service import create_user, update_user_role
@@ -28,10 +30,12 @@ async def create_doctor(
     user_password: str,
     user_phone: str,
     hospital_id: Optional[str] = None,
+    hospital_admin_id: Optional[str] = None,
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
     try:
         # Validate hospital exists if hospital_id is provided
+        hospital: Hospital | None = None
         if hospital_id:
             hospital_result = await db.execute(
                 select(Hospital).where(Hospital.hospital_id == hospital_id)
@@ -39,7 +43,25 @@ async def create_doctor(
             hospital = hospital_result.scalar_one_or_none()
             if not hospital:
                 raise HTTPException(status_code=404, detail="Hospital not found")
-
+        if hospital_admin_id:
+            # Verify that the hospital_admin_id corresponds to the admin of the hospital
+            hospital_result = await db.execute(
+                select(Hospital).where(Hospital.hospital_id == hospital_id)
+            )
+            hospital = hospital_result.scalar_one_or_none()
+            if not hospital:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Hospital not found for the provided hospital_id",
+                )
+        license_file = await db.execute(
+            select(File).where(File.file_id == license_certificate)
+        )
+        license_file_obj = license_file.scalar_one_or_none()
+        if not license_file_obj:
+            raise HTTPException(
+                status_code=404, detail="License certificate file not found"
+            )
         # Create user account for the doctor
         doctor_user = await create_user(
             db=db,
@@ -55,7 +77,7 @@ async def create_doctor(
             doctor_id=StringUtils.randomAlphaNumeric(8),
             specialization_department=specialization_department,
             experience_years=experience_years,
-            license_certificate=license_certificate,
+            license_certificate=license_file_obj,
             user_id=doctor_user.id,
             hospital_id=hospital_id,
         )
@@ -83,77 +105,84 @@ async def create_doctor(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def upgrade_user_to_doctor(
-    db: AsyncSession,
-    user_id: str,
-    specialization_department: str,
-    experience_years: int,
-    license_certificate: str,
-) -> Doctor:
-    """Upgrade an existing user to doctor role. Both user role update and doctor creation must succeed."""
-    try:
-        # Start transaction explicitly
-        async with db.begin():
-            # First, verify user exists and is eligible for upgrade
-            result = await db.execute(
-                select(User).options(selectinload(User.role)).where(User.id == user_id)
-            )
-            user = result.scalar_one_or_none()
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
+# async def upgrade_user_to_doctor(
+#     db: AsyncSession,
+#     user_id: str,
+#     specialization_department: str,
+#     experience_years: int,
+#     license_certificate_id: str,
+# ) -> Doctor:
+#     """Upgrade an existing user to doctor role. Both user role update and doctor creation must succeed."""
+#     try:
+#         # Start transaction explicitly
+#         async with db.begin():
+#             # First, verify user exists and is eligible for upgrade
+#             result = await db.execute(
+#                 select(User).options(selectinload(User.role)).where(User.id == user_id)
+#             )
+#             user = result.scalar_one_or_none()
+#             if not user:
+#                 raise HTTPException(status_code=404, detail="User not found")
 
-            # Check if user already has a doctor profile
-            doctor_check = await db.execute(
-                select(Doctor).where(Doctor.user_id == user_id)
-            )
-            existing_doctor = doctor_check.scalar_one_or_none()
-            if existing_doctor:
-                raise HTTPException(
-                    status_code=400, detail="User already has a doctor profile"
-                )
+#             # Check if user already has a doctor profile
+#             doctor_check = await db.execute(
+#                 select(Doctor).where(Doctor.user_id == user_id)
+#             )
+#             existing_doctor = doctor_check.scalar_one_or_none()
+#             if existing_doctor:
+#                 raise HTTPException(
+#                     status_code=400, detail="User already has a doctor profile"
+#                 )
 
-            # Check if user role is eligible for upgrade (PATIENT or USER)
-            if user.role.role not in [RoleEnum.PATIENT]:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cannot upgrade user with role {user.role.role} to doctor. Only patients can be upgraded.",
-                )
+#             # Check if user role is eligible for upgrade (PATIENT or USER)
+#             if user.role.role not in [RoleEnum.PATIENT]:
+#                 raise HTTPException(
+#                     status_code=400,
+#                     detail=f"Cannot upgrade user with role {user.role.role} to doctor. Only patients can be upgraded.",
+#                 )
+#             license_file = await db.execute(
+#                 select(File).where(File.file_id == license_certificate_id)
+#             )
+#             license_file_obj = license_file.scalar_one_or_none()
+#             if not license_file_obj:
+#                 raise HTTPException(
+#                     status_code=404, detail="License certificate file not found"
+#                 )
+#             # Update user role to DOCTOR (this will auto-rollback if doctor creation fails)
+#             updated_user = await update_user_role(db, user_id, RoleEnum.DOCTOR)
 
-            # Update user role to DOCTOR (this will auto-rollback if doctor creation fails)
-            updated_user = await update_user_role(db, user_id, RoleEnum.DOCTOR)
+#             # Create doctor record (hospital_id is None as specified)
+#             doctor = Doctor(
+#                 doctor_id=StringUtils.randomAlphaNumeric(8),
+#                 specialization_department=specialization_department,
+#                 experience_years=experience_years,
+#                 license_certificate=license_file_obj,
+#                 user=updated_user,
+#                 hospital_id=None,  # Explicitly set to None for user upgrades
+#             )
 
-            # Create doctor record (hospital_id is None as specified)
-            doctor = Doctor(
-                doctor_id=StringUtils.randomAlphaNumeric(8),
-                specialization_department=specialization_department,
-                experience_years=experience_years,
-                license_certificate=license_certificate,
-                user_id=user_id,
-                hospital_id=None,  # Explicitly set to None for user upgrades
-            )
+#             db.add(doctor)
+#             await db.flush()  # Ensure doctor is created before returning
 
-            db.add(doctor)
-            await db.flush()  # Ensure doctor is created before returning
+#             # Return doctor with relationships loaded
+#             result = await db.execute(
+#                 select(Doctor)
+#                 .options(
+#                     selectinload(Doctor.user).selectinload(User.role),
+#                     selectinload(Doctor.hospital),
+#                 )
+#                 .where(Doctor.doctor_id == doctor.doctor_id)
+#             )
+#             return result.scalar_one()
 
-            # Return doctor with relationships loaded
-            result = await db.execute(
-                select(Doctor)
-                .options(
-                    selectinload(Doctor.user).selectinload(User.role),
-                    selectinload(Doctor.hospital),
-                )
-                .where(Doctor.doctor_id == doctor.doctor_id)
-            )
-            return result.scalar_one()
-
-    except HTTPException:
-        # HTTPExceptions are already properly formatted
-        raise
-    except Exception as e:
-        # Any other exception should rollback the transaction automatically
-        raise HTTPException(
-            status_code=500, detail=f"Failed to upgrade user to doctor: {str(e)}"
-        )
+#     except HTTPException:
+#         # HTTPExceptions are already properly formatted
+#         raise
+#     except Exception as e:
+#         # Any other exception should rollback the transaction automatically
+#         raise HTTPException(
+#             status_code=500, detail=f"Failed to upgrade user to doctor: {str(e)}"
+#         )
 
 
 async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
@@ -161,6 +190,7 @@ async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
     try:
         result = await db.execute(
             select(Doctor).options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.hospital),
             )
@@ -176,6 +206,7 @@ async def get_doctor_by_id(db: AsyncSession, doctor_id: str) -> Doctor:
         result = await db.execute(
             select(Doctor)
             .options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.hospital),
             )
@@ -197,6 +228,7 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
         result = await db.execute(
             select(Doctor)
             .options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.hospital),
             )
@@ -230,6 +262,7 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
         result = await db.execute(
             select(Doctor)
             .options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.hospital),
             )
@@ -238,6 +271,34 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
         return list(result.scalars().all())
     except HTTPException:
         raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def get_doctors_of_logged_in_hospital_admin(
+    db: AsyncSession, hospital_admin_id: str
+) -> List[Doctor]:
+    """Get all doctors not associated with any hospital."""
+    try:
+        hospital_of_admin_result = await db.execute(
+            select(Hospital).where(Hospital.admin_id == hospital_admin_id)
+        )
+        hospital_of_admin = hospital_of_admin_result.scalar_one_or_none()
+        if not hospital_of_admin:
+            raise HTTPException(
+                status_code=404,
+                detail="Hospital not found for the logged-in hospital admin",
+            )
+        result = await db.execute(
+            select(Doctor)
+            .options(
+                selectinload(Doctor.license_certificate),
+                selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.hospital),
+            )
+            .where(Doctor.hospital_id == hospital_of_admin.hospital_id)
+        )
+        return list(result.scalars().all())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -260,6 +321,7 @@ async def update_doctor(
             .options(
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.hospital),
+                selectinload(Doctor.license_certificate),
             )
             .where(Doctor.doctor_id == doctor_id)
         )
@@ -317,7 +379,15 @@ async def update_doctor(
         if experience_years is not None:
             doctor.experience_years = experience_years
         if license_certificate is not None:
-            doctor.license_certificate = license_certificate
+            license_file = await db.execute(
+                select(File).where(File.file_id == license_certificate)
+            )
+            license_file_obj = license_file.scalar_one_or_none()
+            if not license_file_obj:
+                raise HTTPException(
+                    status_code=404, detail="License certificate file not found"
+                )
+            doctor.license_certificate = license_file_obj
         if hospital_id is not None:
             doctor.hospital_id = hospital_id if hospital_id else None
 
@@ -351,7 +421,9 @@ async def delete_doctor(
         # Get the doctor first
         result = await db.execute(
             select(Doctor)
-            .options(selectinload(Doctor.user))
+            .options(
+                selectinload(Doctor.user), selectinload(Doctor.license_certificate)
+            )
             .where(Doctor.doctor_id == doctor_id)
         )
         doctor = result.scalar_one_or_none()
@@ -362,30 +434,33 @@ async def delete_doctor(
         if role == RoleEnum.SUPER_ADMIN:
             # Super admin can delete any doctor
             pass
-        elif role == RoleEnum.HOSPITAL_ADMIN:
+        elif role != RoleEnum.HOSPITAL_ADMIN:
             # Hospital admin can delete doctors in their hospital
-            if not doctor.hospital_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied. Doctor is not associated with any hospital.",
-                )
+            # if not doctor.hospital_id:
+            #     raise HTTPException(
+            #         status_code=403,
+            #         detail="Access denied. Doctor is not associated with any hospital.",
+            #     )
             # Get admin's hospital
-            admin_hospital_result = await db.execute(
-                select(Hospital).where(Hospital.admin_id == current_user_id)
-            )
-            admin_hospital = admin_hospital_result.scalar_one_or_none()
-            if not admin_hospital or admin_hospital.hospital_id != doctor.hospital_id:
-                raise HTTPException(
-                    status_code=403,
-                    detail="Access denied. You can only delete doctors in your hospital.",
-                )
-        else:
+            # admin_hospital_result = await db.execute(
+            #     select(Hospital).where(Hospital.admin_id == current_user_id)
+            # )
+            # admin_hospital = admin_hospital_result.scalar_one_or_none()
+            # if not admin_hospital or admin_hospital.hospital_id != doctor.hospital_id:
+            #     raise HTTPException(
+            #         status_code=403,
+            #         detail="Access denied. You can only delete doctors in your hospital.",
+            #     )
+            # else:
             raise HTTPException(
                 status_code=403,
                 detail="Access denied. Insufficient permissions to delete doctor.",
             )
 
         await db.delete(doctor)
+        if doctor.license_certificate:
+            await deleteFile(db, doctor.license_certificate.file_id)
+        await db.delete(doctor.user)  # Also delete associated user account
         await db.commit()
         return {"message": "Doctor deleted successfully"}
 

@@ -42,3 +42,18 @@ async def saveFile(
         return saved_file
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
+
+
+async def deleteFile(db: AsyncSession, file_id: str):
+    try:
+        result = await db.execute(select(File).where(File.file_id == file_id))
+        file_obj = result.scalar_one_or_none()
+        if not file_obj:
+            raise HTTPException(status_code=404, detail="File not found")
+        await db.delete(file_obj)
+        await db.commit()
+        return True
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error: " + str(e))

@@ -52,6 +52,15 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/appointments/admin/all", readOnlyMethods
         ),
+        # Super admin can view all appointment changed times
+        setAuthorizationPermissions(
+            role, "/api/v1/appointment-changed-times/{changed_time_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointment-changed-times/appointment/{appointment_id}",
+            readOnlyMethods,
+        ),
     ]
 
 
@@ -84,6 +93,15 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/appointments/hospital-admin/appointments", readOnlyMethods
         ),
+        # Hospital admin can view appointment changed times for their hospital
+        setAuthorizationPermissions(
+            role, "/api/v1/appointment-changed-times/{changed_time_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointment-changed-times/appointment/{appointment_id}",
+            readOnlyMethods,
+        ),
     ]
 
 
@@ -101,6 +119,15 @@ def getUserPermissions(role: Role) -> List[Authorization]:
         ),
         setAuthorizationPermissions(
             role, "/api/v1/appointments/patient/my-appointments", readOnlyMethods
+        ),
+        # Patient can view appointment changed times for their appointments
+        setAuthorizationPermissions(
+            role, "/api/v1/appointment-changed-times/{changed_time_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointment-changed-times/appointment/{appointment_id}",
+            readOnlyMethods,
         ),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
@@ -125,6 +152,20 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
         ),
         setAuthorizationPermissions(
             role, "/api/v1/appointments/doctor/my-appointments", readOnlyMethods
+        ),
+        # Doctor can manage appointment changed times
+        setAuthorizationPermissions(
+            role, "/api/v1/appointment-changed-times", postMethod
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointment-changed-times/{changed_time_id}",
+            readOnlyMethods + writeMethods,
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/appointment-changed-times/appointment/{appointment_id}",
+            readOnlyMethods,
         ),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods

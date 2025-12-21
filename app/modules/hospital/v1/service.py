@@ -10,6 +10,7 @@ from app.modules import hospital
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1 import service as UserService
 from app.modules.user.v1.models import User
+from app.modules.user.v1.schema import UserCreate
 from app.modules.user.v1.service import create_user
 
 
@@ -21,20 +22,17 @@ async def add_hospital(
     longitude: float,
     contact_number: list[str],
     opened_date,
-    admin_name: str,
-    admin_email: str,
-    admin_password: str,
-    admin_phone: str,
+    admin_details: UserCreate,
 ) -> Hospital:
     try:
         # Create admin user first
         admin_user = await create_user(
             db=db,
-            name=admin_name,
-            email=admin_email,
-            password=admin_password,
+            name=admin_details.name,
+            email=admin_details.email,
+            password=admin_details.password,
             role=RoleEnum.HOSPITAL_ADMIN,
-            phone_number=admin_phone,
+            phone_number=admin_details.phone_number,
         )
 
         # Create hospital
@@ -105,7 +103,7 @@ async def get_hospital_by_admin_id(db: AsyncSession, admin_id: str) -> Hospital:
     try:
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin).selectinload(User.role))
+            .options(selectinload(Hospital.admin))
             .where(Hospital.admin_id == admin_id)
         )
         hospital = result.scalar_one_or_none()
@@ -209,16 +207,7 @@ async def delete_hospital(
         if not hospital:
             raise HTTPException(status_code=404, detail="Hospital not found")
 
-        # Authorization check
-        if role != RoleEnum.SUPER_ADMIN:
-            # Other roles are not allowed to delete hospitals
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Insufficient permissions to delete hospital.",
-            )
-            # Super admin can delete any hospital
-
-        # await UserService.delete_user(db, hospital.admin_id)
+        await db.delete(hospital.admin)
         await db.delete(hospital)
         await db.commit()
         return {"message": "Hospital deleted successfully"}
