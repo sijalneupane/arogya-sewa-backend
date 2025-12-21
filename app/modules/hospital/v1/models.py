@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
+from app.modules.file.v1.models import File
 
 if TYPE_CHECKING:
     from app.modules.doctor.v1.models import Doctor
@@ -24,8 +25,17 @@ class Hospital(Base, TimestampMixin):
         ARRAY(String(15)), nullable=False, default=list
     )
     opened_date: Mapped[Date] = mapped_column(Date, nullable=True)
+    hospital_license_id: Mapped[str] = mapped_column(
+        String(100),
+        ForeignKey("file.file_id"),
+        nullable=True,
+    )
     admin_id: Mapped[str] = mapped_column(
         ForeignKey("user.id"), nullable=False, unique=False
+    )
+    # Relationships
+    hospital_license: Mapped["File"] = relationship(
+        uselist=False, back_populates="hospital_license"
     )
     admin: Mapped["User"] = relationship("User", back_populates="hospital")
     doctors: Mapped[List["Doctor"]] = relationship("Doctor", back_populates="hospital")

@@ -49,6 +49,7 @@ async def create_hospital(
         latitude=data.latitude,
         longitude=data.longitude,
         opened_date=data.opened_date,
+        hospital_license_id=data.hospital_license_id,
     )
     response = HospitalResponseSchema.model_validate(created_hospital)
     return {"message": "Hospital created successfully", "data": response}
@@ -125,6 +126,7 @@ async def update_hospital_details(
     return HospitalDetailResponseSchema(
         message="Hospital updated successfully", data=response
     )
+
 
 @router.delete("/{hospital_id}", summary="Delete a hospital (Not implemented)")
 async def delete_hospital(

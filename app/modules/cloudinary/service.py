@@ -4,7 +4,7 @@ from fastapi import UploadFile
 
 
 # Upload image
-async def upload_image(file: UploadFile, folder: str):
+async def upload_file_cloudinary(file: UploadFile, folder: str):
     """Upload file to Cloudinary"""
     # Read file content
     file_content = await file.read()
@@ -19,11 +19,11 @@ async def upload_image(file: UploadFile, folder: str):
 
 
 # Delete image using public_id
-def delete_image(public_id: str):
+async def delete_file_cloudinary(public_id: str):
     return cloudinary.uploader.destroy(public_id)
 
 
 # Generate transformed URL
-def generate_url(public_id, width=None, height=None, crop="fill"):
+async def generate_url_cloudinary(public_id, width=None, height=None, crop="fill"):
     url, _ = cloudinary_url(public_id, width=width, height=height, crop=crop)
     return url

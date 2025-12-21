@@ -3,6 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
+from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
@@ -15,6 +16,7 @@ class HospitalCreateSchema(BaseModel):
     opened_date: date = Field(
         ..., description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
+    hospital_license_id: str
     admin_details: UserCreate
 
 
@@ -27,6 +29,7 @@ class HospitalUpdateSchema(BaseModel):
     opened_date: Optional[date] = Field(
         None, description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
+    hospital_license_id: Optional[str] = None
 
 
 class HospitalResponseSchema(BaseModel):
@@ -42,6 +45,7 @@ class HospitalResponseSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
     admin: UserResponse
+    hospital_license: Optional[FileResponseSchema] = None
 
 
 class HospitalListResponseSchema(BaseModel):
@@ -66,6 +70,7 @@ class AdminHospitalResponseSchema(BaseModel):
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
     created_at: datetime
     updated_at: datetime
+    hospital_license: Optional[FileResponseSchema] = None
 
 
 class AdminHospitalDetailResponseSchema(BaseModel):

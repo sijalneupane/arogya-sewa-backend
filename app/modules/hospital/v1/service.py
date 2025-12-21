@@ -7,6 +7,8 @@ from sqlalchemy.orm import selectinload
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules import hospital
+from app.modules.file.v1.models import File
+from app.modules.file.v1.service import deleteFile
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1 import service as UserService
 from app.modules.user.v1.models import User
@@ -22,9 +24,20 @@ async def add_hospital(
     longitude: float,
     contact_number: list[str],
     opened_date,
+    hospital_license_id: str,
     admin_details: UserCreate,
 ) -> Hospital:
     try:
+        # Validate hospital license file exists
+        license_file = await db.execute(
+            select(File).where(File.file_id == hospital_license_id)
+        )
+        license_file_obj = license_file.scalar_one_or_none()
+        if not license_file_obj:
+            raise HTTPException(
+                status_code=404, detail="Hospital license file not found"
+            )
+
         # Create admin user first
         admin_user = await create_user(
             db=db,
@@ -44,16 +57,19 @@ async def add_hospital(
             longitude=longitude,
             contact_number=contact_number,
             opened_date=opened_date,
+            hospital_license=license_file_obj,
             admin=admin_user,
         )
         db.add(hospital)
         await db.commit()
         await db.refresh(hospital)
 
-        # Ensure the admin relationship is loaded
+        # Ensure the admin and license relationships are loaded
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin))
+            .options(
+                selectinload(Hospital.admin), selectinload(Hospital.hospital_license)
+            )
             .where(Hospital.hospital_id == hospital.hospital_id)
         )
         hospital_with_admin = result.scalar_one()
@@ -71,7 +87,8 @@ async def get_all_hospitals(db: AsyncSession) -> list[Hospital]:
     try:
         result = await db.execute(
             select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role)
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
             )
         )
         hospitals = result.scalars().all()
@@ -85,7 +102,10 @@ async def get_hospital_by_id(db: AsyncSession, hospital_id: str) -> Hospital:
     try:
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin).selectinload(User.role))
+            .options(
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
+            )
             .where(Hospital.hospital_id == hospital_id)
         )
         hospital = result.scalar_one_or_none()
@@ -103,7 +123,9 @@ async def get_hospital_by_admin_id(db: AsyncSession, admin_id: str) -> Hospital:
     try:
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin))
+            .options(
+                selectinload(Hospital.admin), selectinload(Hospital.hospital_license)
+            )
             .where(Hospital.admin_id == admin_id)
         )
         hospital = result.scalar_one_or_none()
@@ -129,13 +151,17 @@ async def update_hospital(
     longitude: Optional[float] = None,
     contact_number: Optional[list[str]] = None,
     opened_date=None,
+    hospital_license_id: Optional[str] = None,
 ) -> Hospital:
     """Update hospital details."""
     try:
         # Get the hospital first
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin).selectinload(User.role))
+            .options(
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
+            )
             .where(Hospital.hospital_id == hospital_id)
         )
         hospital = result.scalar_one_or_none()
@@ -160,6 +186,18 @@ async def update_hospital(
                 detail="Access denied. Insufficient permissions to update hospital.",
             )
 
+        # Validate and update hospital license if provided
+        if hospital_license_id is not None:
+            license_file = await db.execute(
+                select(File).where(File.file_id == hospital_license_id)
+            )
+            license_file_obj = license_file.scalar_one_or_none()
+            if not license_file_obj:
+                raise HTTPException(
+                    status_code=404, detail="Hospital license file not found"
+                )
+            hospital.hospital_license = license_file_obj
+
         # Update fields if provided
         if name is not None:
             hospital.name = name
@@ -180,7 +218,10 @@ async def update_hospital(
         # Reload with relationships
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.admin).selectinload(User.role))
+            .options(
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
+            )
             .where(Hospital.hospital_id == hospital_id)
         )
         updated_hospital = result.scalar_one()
@@ -199,13 +240,19 @@ async def delete_hospital(
     """Delete a hospital by its ID."""
     try:
         await db.begin()
-        # Get the hospital first
+        # Get the hospital first with license loaded
         result = await db.execute(
-            select(Hospital).where(Hospital.hospital_id == hospital_id)
+            select(Hospital)
+            .options(selectinload(Hospital.hospital_license))
+            .where(Hospital.hospital_id == hospital_id)
         )
         hospital = result.scalar_one_or_none()
         if not hospital:
             raise HTTPException(status_code=404, detail="Hospital not found")
+
+        # Delete associated license file if exists
+        if hospital.hospital_license:
+            await deleteFile(db, hospital.hospital_license.file_id)
 
         await db.delete(hospital.admin)
         await db.delete(hospital)
@@ -235,7 +282,8 @@ async def get_closest_hospital_long_lat_vincenity(
     try:
         hospitals = await db.execute(
             select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role)
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
             )
         )
         hospitals = hospitals.scalars().all()
@@ -275,7 +323,8 @@ async def get_closest_hospital_long_lat_haversine(
         # a spatial database index for performance.
         hospitals = await db.execute(
             select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role)
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.hospital_license),
             )
         )
         hospitals = hospitals.scalars().all()

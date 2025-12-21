@@ -10,8 +10,9 @@ from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.modules.user.v1.models import User  # pragma: no cover
     from app.modules.doctor.v1.models import Doctor  # pragma: no cover
+    from app.modules.hospital.v1.models import Hospital
+    from app.modules.user.v1.models import User  # pragma: no cover
 
 
 class File(Base, TimestampMixin):
@@ -30,6 +31,9 @@ class File(Base, TimestampMixin):
     # Relationship to User model (assuming a user can have multiple files)
     doctor_license: Mapped["Doctor"] = relationship(
         uselist=False, back_populates="license_certificate"
+    )
+    hospital_license: Mapped["Hospital"] = relationship(
+        uselist=False, back_populates="hospital_license"
     )
     user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=False)
     user: Mapped["User"] = relationship(back_populates="files")  # type

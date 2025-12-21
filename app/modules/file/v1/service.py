@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.enums.file_meta_type_enum import FileMetaTypeEnum
 from app.common.enums.file_type_enum import FileTypeEnum
 from app.core.utils.string_utils import StringUtils
-from app.modules.cloudinary.service import upload_image
+from app.modules.cloudinary.service import (
+    delete_file_cloudinary,
+    upload_file_cloudinary,
+)
 from app.modules.file.v1.models import File
 
 
@@ -20,7 +23,7 @@ async def saveFile(
             raise HTTPException(
                 status_code=400, detail="File size exceeds the 2MB limit"
             )
-        url, public_id = await upload_image(file, folder="arogyga_images")
+        url, public_id = await upload_file_cloudinary(file, folder="arogyga_images")
         new_file = File(
             file_id="F" + StringUtils.randomAlphaNumeric(7),
             public_id=public_id,
@@ -50,6 +53,7 @@ async def deleteFile(db: AsyncSession, file_id: str):
         file_obj = result.scalar_one_or_none()
         if not file_obj:
             raise HTTPException(status_code=404, detail="File not found")
+        await delete_file_cloudinary(file_obj.public_id)
         await db.delete(file_obj)
         await db.commit()
         return True
