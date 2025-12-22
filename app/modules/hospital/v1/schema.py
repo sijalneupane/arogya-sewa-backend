@@ -1,8 +1,9 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from app.common.enums.file_type_enum import FileTypeEnum
 from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
@@ -16,7 +17,8 @@ class HospitalCreateSchema(BaseModel):
     opened_date: date = Field(
         ..., description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
-    hospital_license_id: str
+    hospital_license_id: str  # License file to be assigned to hospital
+    logo_img_id: Optional[str] = None  # Logo file to be assigned to hospital
     admin_details: UserCreate
 
 
@@ -30,6 +32,7 @@ class HospitalUpdateSchema(BaseModel):
         None, description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
     hospital_license_id: Optional[str] = None
+    logo_img_id: Optional[str] = None
 
 
 class HospitalResponseSchema(BaseModel):
@@ -45,7 +48,16 @@ class HospitalResponseSchema(BaseModel):
     created_at: datetime
     updated_at: datetime
     admin: UserResponse
-    hospital_license: Optional[FileResponseSchema] = None
+    files: list[FileResponseSchema] = []
+
+    @computed_field
+    @property
+    def logo(self) -> Optional[FileResponseSchema]:
+        """Extract logo from files list based on file_type."""
+        for file in self.files:
+            if file.file_type == FileTypeEnum.HOSPITAL_LOGO:
+                return file
+        return None
 
 
 class HospitalListResponseSchema(BaseModel):
@@ -70,7 +82,16 @@ class AdminHospitalResponseSchema(BaseModel):
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
     created_at: datetime
     updated_at: datetime
-    hospital_license: Optional[FileResponseSchema] = None
+    files: list[FileResponseSchema] = []
+
+    @computed_field
+    @property
+    def logo(self) -> Optional[FileResponseSchema]:
+        """Extract logo from files list based on file_type."""
+        for file in self.files:
+            if file.file_type == FileTypeEnum.HOSPITAL_LOGO:
+                return file
+        return None
 
 
 class AdminHospitalDetailResponseSchema(BaseModel):

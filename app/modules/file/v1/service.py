@@ -23,6 +23,17 @@ async def save_file(
             raise HTTPException(
                 status_code=400, detail="File size exceeds the 2MB limit"
             )
+        if file_type == FileTypeEnum.PROFILE:
+            duplicate_profile_query = await db.execute(
+                select(File).where(
+                    File.user_id == uploaded_by, File.file_type == FileTypeEnum.PROFILE
+                )
+            )
+            duplicate_profile = duplicate_profile_query.scalar_one_or_none()
+            if duplicate_profile:
+                raise HTTPException(
+                    status_code=400, detail="Profile file already exists for user"
+                )
         url, public_id = await upload_file_cloudinary(file, folder="arogyga_images")
         new_file = File(
             file_id="F" + StringUtils.randomAlphaNumeric(7),

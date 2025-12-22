@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy import ForeignKey, String
@@ -32,8 +32,10 @@ class File(Base, TimestampMixin):
     doctor_license: Mapped["Doctor"] = relationship(
         uselist=False, back_populates="license_certificate"
     )
-    hospital_license: Mapped["Hospital"] = relationship(
-        uselist=False, back_populates="hospital_license"
+    # Many-to-one relationship: many files can belong to one hospital
+    hospital_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("hospital.hospital_id"), nullable=True
     )
+    hospital: Mapped[Optional["Hospital"]] = relationship(back_populates="files")
     user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=False)
     user: Mapped["User"] = relationship(back_populates="files")  # type

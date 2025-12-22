@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Date, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -25,17 +25,15 @@ class Hospital(Base, TimestampMixin):
         ARRAY(String(15)), nullable=False, default=list
     )
     opened_date: Mapped[Date] = mapped_column(Date, nullable=True)
-    hospital_license_id: Mapped[str] = mapped_column(
-        String(100),
-        ForeignKey("file.file_id"),
-        nullable=True,
-    )
     admin_id: Mapped[str] = mapped_column(
         ForeignKey("user.id"), nullable=False, unique=False
     )
+
     # Relationships
-    hospital_license: Mapped["File"] = relationship(
-        uselist=False, back_populates="hospital_license"
+    # One-to-many: A hospital can have many files (logo, license, images, etc.)
+    # Files are differentiated by file_type enum
+    files: Mapped[List["File"]] = relationship(
+        back_populates="hospital", cascade="all, delete-orphan"
     )
     admin: Mapped["User"] = relationship("User", back_populates="hospital")
     doctors: Mapped[List["Doctor"]] = relationship("Doctor", back_populates="hospital")
