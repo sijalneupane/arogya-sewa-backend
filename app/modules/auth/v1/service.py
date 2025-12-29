@@ -170,13 +170,25 @@ async def login_user(db: AsyncSession, email: str, password: str):
         if not user:
             raise HTTPException(status_code=401, detail="Invalid email or password")
 
-        payload = JwtPayload(sub=user.id, name=user.name, role=user.role.role)
+        # Load user with role and files
+        result = await db.execute(
+            select(User)
+            .options(selectinload(User.role), selectinload(User.files))
+            .where(User.id == user.id)
+        )
+        user_with_details = result.scalar_one()
+
+        payload = JwtPayload(
+            sub=user_with_details.id,
+            name=user_with_details.name,
+            role=user_with_details.role.role,
+        )
         # print(
         #     f"Creating JWT with payload: sub={user.id}, name={user.name}, role={user.role.role}"
         # )
         access = create_access_token(payload)
-        refresh = create_refresh_token({"sub": user.id})
+        refresh = create_refresh_token({"sub": user_with_details.id})
 
-        return access, refresh, user
+        return access, refresh, user_with_details
     except HTTPException as e:
         raise e

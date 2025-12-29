@@ -51,6 +51,7 @@ async def create_hospital(
         opened_date=data.opened_date,
         hospital_license_id=data.hospital_license_id,
         logo_img_id=data.logo_img_id,
+        banner_img_id=data.banner_img_id,
     )
     response = HospitalResponseSchema.model_validate(created_hospital)
     return {"message": "Hospital created successfully", "data": response}

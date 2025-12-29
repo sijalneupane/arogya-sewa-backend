@@ -1,12 +1,14 @@
-from typing import Optional
+from typing import List, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
+from app.modules.auth.v1.models import Role
 from app.modules.file.v1.models import File
 from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
@@ -24,7 +26,8 @@ async def add_hospital(
     contact_number: list[str],
     opened_date,
     hospital_license_id: str,
-    logo_img_id: Optional[str],
+    logo_img_id: str,
+    banner_img_id: str,
     admin_details: UserCreate,
 ) -> Hospital:
     try:
@@ -38,16 +41,17 @@ async def add_hospital(
                 status_code=404, detail="Hospital license file not found"
             )
 
-        # Validate logo file if provided
-        logo_file_obj = None
-        if logo_img_id:
-            logo_file = await db.execute(
-                select(File).where(File.file_id == logo_img_id)
-            )
-            logo_file_obj = logo_file.scalar_one_or_none()
-            if not logo_file_obj:
-                raise HTTPException(status_code=404, detail="Logo file not found")
+        logo_file = await db.execute(select(File).where(File.file_id == logo_img_id))
+        logo_file_obj = logo_file.scalar_one_or_none()
+        if not logo_file_obj:
+            raise HTTPException(status_code=404, detail="Logo file not found")
 
+        banner_file = await db.execute(
+            select(File).where(File.file_id == banner_img_id)
+        )
+        banner_file_obj = banner_file.scalar_one_or_none()
+        if not banner_file_obj:
+            raise HTTPException(status_code=404, detail="Banner file not found")
         # Create admin user first
         admin_user = await create_user(
             db=db,
@@ -74,8 +78,8 @@ async def add_hospital(
 
         # Assign files to hospital
         license_file_obj.hospital_id = hospital.hospital_id
-        if logo_file_obj:
-            logo_file_obj.hospital_id = hospital.hospital_id
+        logo_file_obj.hospital_id = hospital.hospital_id
+        banner_file_obj.hospital_id = hospital.hospital_id
 
         await db.commit()
         await db.refresh(hospital)
@@ -97,35 +101,54 @@ async def add_hospital(
 
 
 async def get_all_hospitals(db: AsyncSession) -> list[Hospital]:
-    """Get all hospitals with their admin details."""
     try:
         result = await db.execute(
-            select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role),
+            select(Hospital)
+            # 1. Join for filtering (This ensures the Hospital MUST have an admin with the specific role)
+            # .join(Hospital.admin)
+            # .join(User.role)
+            # .where(Role.role == RoleEnum.HOSPITAL_ADMIN)
+            # 2. Eager Load for the return data (Prevents N+1)
+            .options(
                 selectinload(Hospital.files),
+                # selectinload(Hospital.admin).selectinload(User.role),
+                # selectinload(Hospital.admin).selectinload(User.files),
             )
         )
+
         hospitals = result.scalars().all()
         return list(hospitals)
+    except HTTPException:
+        raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 async def get_hospital_by_id(db: AsyncSession, hospital_id: str) -> Hospital:
-    """Get a hospital by its ID with admin details."""
     try:
         result = await db.execute(
             select(Hospital)
+            # .join(Hospital.admin)
+            # .join(User.role)
             .options(
-                selectinload(Hospital.admin).selectinload(User.role),
                 selectinload(Hospital.files),
+                # selectinload(Hospital.admin).selectinload(User.role),
+                # selectinload(Hospital.admin).selectinload(User.files),
             )
-            .where(Hospital.hospital_id == hospital_id)
+            .where(
+                Hospital.hospital_id == hospital_id,
+                # Role.role == RoleEnum.HOSPITAL_ADMIN,
+            )
         )
-        hospital = result.scalar_one_or_none()
+
+        hospital = result.unique().scalar_one_or_none()
+
         if not hospital:
             raise HTTPException(status_code=404, detail="Hospital not found")
+
         return hospital
+
     except HTTPException:
         raise
     except Exception as e:
@@ -181,11 +204,15 @@ async def update_hospital(
         if not hospital:
             raise HTTPException(status_code=404, detail="Hospital not found")
 
+        old_license_file_id: Optional[str] = None
+        old_logo_file_id: Optional[str] = None
+        for file in hospital.files:
+            if file.file_type == FileTypeEnum.LICENSE:
+                old_license_file_id = file.file_id
+            elif file.file_type == FileTypeEnum.HOSPITAL_LOGO:
+                old_logo_file_id = file.file_id
         # Authorization check
-        if role == RoleEnum.SUPER_ADMIN:
-            # Super admin can update any hospital
-            pass
-        elif role == RoleEnum.HOSPITAL_ADMIN:
+        if role == RoleEnum.HOSPITAL_ADMIN:
             # Hospital admin can only update their own hospital
             if hospital.admin_id != current_user_id:
                 raise HTTPException(
@@ -199,6 +226,7 @@ async def update_hospital(
                 detail="Access denied. Insufficient permissions to update hospital.",
             )
 
+        file_to_delete: Optional[List[str]] = []
         # Validate and assign hospital license file if provided
         if hospital_license_id is not None:
             license_file = await db.execute(
@@ -210,6 +238,7 @@ async def update_hospital(
                     status_code=404, detail="Hospital license file not found"
                 )
             # Assign file to this hospital
+            file_to_delete.append(old_license_file_id) if old_license_file_id else None
             license_file_obj.hospital_id = hospital.hospital_id
 
         # Validate and assign logo file if provided
@@ -221,7 +250,10 @@ async def update_hospital(
             if not logo_file_obj:
                 raise HTTPException(status_code=404, detail="Logo file not found")
             # Assign file to this hospital
+            file_to_delete.append(old_logo_file_id) if old_logo_file_id else None
             logo_file_obj.hospital_id = hospital.hospital_id
+
+        await delete_file(db, file_to_delete)
 
         # Update fields if provided
         if name is not None:
@@ -346,13 +378,7 @@ async def get_closest_hospital_long_lat_haversine(
     try:
         # NOTE: This part (fetching ALL hospitals) should ideally be optimized using
         # a spatial database index for performance.
-        hospitals = await db.execute(
-            select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role),
-                selectinload(Hospital.files),
-            )
-        )
-        hospitals = hospitals.scalars().all()
+        hospitals = await get_all_hospitals(db)
 
         print("\n-------" + str(len(hospitals)) + "-------\n")
         nearby_hospitals = []

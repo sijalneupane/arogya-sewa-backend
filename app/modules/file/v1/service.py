@@ -83,16 +83,42 @@ async def update_file(
         raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
 
 
-async def delete_file(db: AsyncSession, file_id: str):
+async def delete_file(db: AsyncSession, file_ids: str | list[str]):
     try:
-        result = await db.execute(select(File).where(File.file_id == file_id))
-        file_obj = result.scalar_one_or_none()
-        if not file_obj:
-            raise HTTPException(status_code=404, detail="File not found")
-        await delete_file_cloudinary(file_obj.public_id)
-        await db.delete(file_obj)
+        ids = file_ids if isinstance(file_ids, list) else [file_ids]
+
+        result = await db.execute(select(File).where(File.file_id.in_(ids)))
+        files = result.scalars().all()
+
+        if not files:
+            raise HTTPException(status_code=404, detail="File(s) not found")
+
+        found_ids = {file.file_id for file in files}
+        missing_ids = set(ids) - found_ids
+        if missing_ids:
+            raise HTTPException(
+                status_code=404,
+                detail=f"File(s) not found for ID(s): {', '.join(missing_ids)}",
+            )
+
+        # Delete from Cloudinary first
+        for file in files:
+            try:
+                await delete_file_cloudinary(file.public_id)
+            except Exception as e:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to delete image from Cloudinary" + str(e),
+                )
+
+        # Delete from DB
+        for file in files:
+            await db.delete(file)
+
         await db.commit()
-        return True
+
+        return {"message": "File(s) deleted successfully", "deletedIds": ids}
+
     except HTTPException:
         raise
     except Exception as e:

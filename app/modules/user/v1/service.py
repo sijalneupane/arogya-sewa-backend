@@ -1,14 +1,16 @@
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.security import pwd_context  ## type: ignore
 from app.core.utils.string_utils import StringUtils
 from app.modules.auth.v1.models import Role
+from app.modules.file.v1.models import File
 from app.modules.user.v1.models import User
 from app.modules.user.v1.schema import UserByIdResponse, UserListResponse, UserResponse
 
@@ -46,7 +48,9 @@ async def create_user(
 
         # Load the user with the role relationship
         result = await db.execute(
-            select(User).options(selectinload(User.role)).where(User.id == new_user.id)
+            select(User)
+            .options(selectinload(User.role), selectinload(User.files))
+            .where(User.id == new_user.id, File.file_type == FileTypeEnum.PROFILE)
         )
         user_with_role = result.scalar_one()
         return user_with_role
@@ -75,7 +79,11 @@ async def get_user_list(db: AsyncSession, role: Optional[RoleEnum] = None):
         UserListResponse with list of users
     """
     try:
-        query = select(User).options(selectinload(User.role))
+        query = (
+            select(User)
+            .options(selectinload(User.role), selectinload(User.files))
+            .where(File.file_type == FileTypeEnum.PROFILE)
+        )
 
         # Apply role filter if provided
         if role:
@@ -91,16 +99,27 @@ async def get_user_list(db: AsyncSession, role: Optional[RoleEnum] = None):
 
 async def get_user_by_id(db: AsyncSession, user_id: str):
     try:
+        print(f"Fetching user by ID: {user_id}")
         result = await db.execute(
-            select(User).options(selectinload(User.role)).where(User.id == user_id)
+            select(User)
+            .options(selectinload(User.role), selectinload(User.files))
+            .where(
+                User.id == user_id,
+                exists()
+                .where(File.user_id == User.id)
+                .where(File.file_type == FileTypeEnum.PROFILE),
+            )
         )
+
         user = result.scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         user_response = UserResponse.model_validate(user)
         return UserByIdResponse(data=user_response)
-    except Exception or HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal server error" + str(e))
 
 
 async def update_user(
@@ -116,7 +135,9 @@ async def update_user(
     try:
         # Get the user
         result = await db.execute(
-            select(User).options(selectinload(User.role)).where(User.id == user_id)
+            select(User)
+            .options(selectinload(User.role), selectinload(User.files))
+            .where(User.id == user_id, File.file_type == FileTypeEnum.PROFILE)
         )
         user = result.scalar_one_or_none()
         if not user:

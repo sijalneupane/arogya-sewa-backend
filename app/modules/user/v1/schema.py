@@ -1,9 +1,12 @@
 from datetime import date, datetime
 from enum import StrEnum
-from pydantic import BaseModel, EmailStr, Field
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, computed_field
 
+from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.common.schema.role import RoleNameDesResponse
+from app.modules.file.v1.schemas import FileResponseSchema
 
 
 class GenderEnum(StrEnum):
@@ -75,6 +78,7 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=5, max_length=14)
     phone_number: str | None = Field(None, min_length=10, max_length=10)
+    # profile_img_id: str | None = None  # File ID for profile image update
 
 
 class UserResponse(BaseModel):
@@ -86,9 +90,19 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    files: list[FileResponseSchema] = Field(default_factory=list, exclude=True)
 
     class Config:
         from_attributes = True
+
+    @computed_field
+    @property
+    def profile_img(self) -> Optional[FileResponseSchema]:
+        """Extract banner from files list based on file_type."""
+        for file in self.files:
+            if file.file_type == FileTypeEnum.PROFILE:
+                return file
+        return None
 
 
 class UserListResponse(BaseModel):

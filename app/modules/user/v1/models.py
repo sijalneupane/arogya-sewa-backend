@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import VARCHAR, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm.base import instance_state
 from sqlalchemy.types import DateTime
 
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
@@ -35,11 +36,29 @@ class User(Base, TimestampMixin):
         back_populates="admin", uselist=False
     )
     doctor: Mapped[Optional["Doctor"]] = relationship(
-        back_populates="user", uselist=False,
+        back_populates="user",
+        uselist=False,
     )
     patient: Mapped[Optional["Patient"]] = relationship(
         back_populates="user", uselist=False
     )
+
+    @property
+    def profile_image(self):
+        """Get profile image from files list."""
+        from app.common.enums.file_type_enum import FileTypeEnum
+
+        # Check if files relationship is loaded to avoid lazy loading
+        state = instance_state(self)
+        if "files" not in state.dict or not state.dict.get("files"):
+            return None
+
+        if self.files:
+            return next(
+                (file for file in self.files if file.file_type == FileTypeEnum.PROFILE),
+                None,
+            )
+        return None
 
     def __repr__(self) -> str:
         return f"User(id={self.id}, name={self.name}, email={self.email}, role_id={self.role_id})"

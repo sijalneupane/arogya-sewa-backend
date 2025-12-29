@@ -1,4 +1,5 @@
-from typing import Optional, List
+from typing import List, Optional
+
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,17 +8,11 @@ from sqlalchemy.orm import selectinload
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.doctor.v1.models import Doctor
-from app.modules.doctor.v1.schema import (
-    DoctorListResponseSchema,
-    DoctorDetailResponseSchema,
-    DoctorResponseSchema,
-    DoctorWithHospitalResponseSchema,
-)
 from app.modules.file.v1.models import File
 from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
-from app.modules.user.v1.service import create_user, update_user_role
+from app.modules.user.v1.service import create_user
 
 
 async def create_doctor(
@@ -90,7 +85,9 @@ async def create_doctor(
         result = await db.execute(
             select(Doctor)
             .options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor.doctor_id)
@@ -192,6 +189,7 @@ async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
             select(Doctor).options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
         )
@@ -208,6 +206,7 @@ async def get_doctor_by_id(db: AsyncSession, doctor_id: str) -> Doctor:
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor_id)
@@ -230,6 +229,7 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.user_id == user_id)
@@ -264,6 +264,7 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.hospital_id == hospital_id)
@@ -294,6 +295,7 @@ async def get_doctors_of_logged_in_hospital_admin(
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.hospital_id == hospital_of_admin.hospital_id)
@@ -320,6 +322,7 @@ async def update_doctor(
             select(Doctor)
             .options(
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
                 selectinload(Doctor.license_certificate),
             )
@@ -398,7 +401,9 @@ async def update_doctor(
         result = await db.execute(
             select(Doctor)
             .options(
+                selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
+                selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor_id)

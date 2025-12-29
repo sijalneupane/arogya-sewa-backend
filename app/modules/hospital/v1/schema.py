@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.common.enums.file_type_enum import FileTypeEnum
+from app.common.schema.pagination import PaginationMeta
 from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
@@ -18,7 +19,8 @@ class HospitalCreateSchema(BaseModel):
         ..., description="ISO 8601 date (YYYY-MM-DD)", examples=["2023-10-15"]
     )
     hospital_license_id: str  # License file to be assigned to hospital
-    logo_img_id: Optional[str] = None  # Logo file to be assigned to hospital
+    logo_img_id: str  # Logo file to be assigned to hospital
+    banner_img_id: str  # Banner file to be assigned to hospital
     admin_details: UserCreate
 
 
@@ -33,6 +35,7 @@ class HospitalUpdateSchema(BaseModel):
     )
     hospital_license_id: Optional[str] = None
     logo_img_id: Optional[str] = None
+    banner_img_id: Optional[str] = None
 
 
 class HospitalResponseSchema(BaseModel):
@@ -47,15 +50,40 @@ class HospitalResponseSchema(BaseModel):
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
     created_at: datetime
     updated_at: datetime
-    admin: UserResponse
-    files: list[FileResponseSchema] = []
+    admin_id: str
+    # admin: Optional[UserResponse] = None
+    files: Optional[list[FileResponseSchema]] = Field(default=None, exclude=True)
 
     @computed_field
     @property
     def logo(self) -> Optional[FileResponseSchema]:
         """Extract logo from files list based on file_type."""
+        if not self.files:
+            return None
         for file in self.files:
             if file.file_type == FileTypeEnum.HOSPITAL_LOGO:
+                return file
+        return None
+
+    @computed_field
+    @property
+    def license(self) -> Optional[FileResponseSchema]:
+        """Extract license from files list based on file_type."""
+        if not self.files:
+            return None
+        for file in self.files:
+            if file.file_type == FileTypeEnum.LICENSE:
+                return file
+        return None
+
+    @computed_field
+    @property
+    def banner(self) -> Optional[FileResponseSchema]:
+        """Extract banner from files list based on file_type."""
+        if not self.files:
+            return None
+        for file in self.files:
+            if file.file_type == FileTypeEnum.HOSPITAL_BANNER:
                 return file
         return None
 
@@ -63,6 +91,7 @@ class HospitalResponseSchema(BaseModel):
 class HospitalListResponseSchema(BaseModel):
     message: str = "Hospitals fetched successfully"
     data: list[HospitalResponseSchema]
+    # paginationMeta: PaginationMeta
 
 
 class HospitalDetailResponseSchema(BaseModel):
@@ -82,14 +111,38 @@ class AdminHospitalResponseSchema(BaseModel):
     opened_date: date  # ISO 8601 date (YYYY-MM-DD)
     created_at: datetime
     updated_at: datetime
-    files: list[FileResponseSchema] = []
+    files: Optional[list[FileResponseSchema]] = Field(default=None, exclude=True)
 
     @computed_field
     @property
     def logo(self) -> Optional[FileResponseSchema]:
         """Extract logo from files list based on file_type."""
+        if not self.files:
+            return None
         for file in self.files:
             if file.file_type == FileTypeEnum.HOSPITAL_LOGO:
+                return file
+        return None
+
+    @computed_field
+    @property
+    def license(self) -> Optional[FileResponseSchema]:
+        """Extract license from files list based on file_type."""
+        if not self.files:
+            return None
+        for file in self.files:
+            if file.file_type == FileTypeEnum.LICENSE:
+                return file
+        return None
+
+    @computed_field
+    @property
+    def banner(self) -> Optional[FileResponseSchema]:
+        """Extract banner from files list based on file_type."""
+        if not self.files:
+            return None
+        for file in self.files:
+            if file.file_type == FileTypeEnum.HOSPITAL_BANNER:
                 return file
         return None
 
