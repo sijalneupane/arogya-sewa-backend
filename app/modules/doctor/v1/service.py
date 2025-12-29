@@ -24,31 +24,35 @@ async def create_doctor(
     user_email: str,
     user_password: str,
     user_phone: str,
-    hospital_id: Optional[str] = None,
+    # hospital_id: Optional[str] = None,
     hospital_admin_id: Optional[str] = None,
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
     try:
-        # Validate hospital exists if hospital_id is provided
-        hospital: Hospital | None = None
-        if hospital_id:
-            hospital_result = await db.execute(
-                select(Hospital).where(Hospital.hospital_id == hospital_id)
+        # Validate hospital
+        # if hospital_id:
+        #     hospital_result = await db.execute(
+        #         select(Hospital).where(Hospital.hospital_id == hospital_id)
+        #     )
+        #     hospital = hospital_result.scalar_one_or_none()
+        #     if not hospital:
+        #         raise HTTPException(status_code=404, detail="Hospital not found")
+        # if hospital_admin_id:
+        # Verify that the hospital_admin_id corresponds to the admin of the hospital
+        hospital_result = await db.execute(
+            select(Hospital).where(Hospital.admin_id == hospital_admin_id)
+        )
+        hospital = (
+            hospital_result.scalar_one_or_none()
+        )  # Get first hospital if multiple exist
+
+        # print("-------Out put here: " + str(hospital))
+        if not hospital:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Hospital not found for the provided hospital_admin_id {hospital_admin_id}",
             )
-            hospital = hospital_result.scalar_one_or_none()
-            if not hospital:
-                raise HTTPException(status_code=404, detail="Hospital not found")
-        if hospital_admin_id:
-            # Verify that the hospital_admin_id corresponds to the admin of the hospital
-            hospital_result = await db.execute(
-                select(Hospital).where(Hospital.hospital_id == hospital_id)
-            )
-            hospital = hospital_result.scalar_one_or_none()
-            if not hospital:
-                raise HTTPException(
-                    status_code=404,
-                    detail="Hospital not found for the provided hospital_id",
-                )
+        # print("----Success---Out put here: " + str(hospital))
         license_file = await db.execute(
             select(File).where(File.file_id == license_certificate)
         )
@@ -57,6 +61,7 @@ async def create_doctor(
             raise HTTPException(
                 status_code=404, detail="License certificate file not found"
             )
+
         # Create user account for the doctor
         doctor_user = await create_user(
             db=db,
@@ -66,7 +71,6 @@ async def create_doctor(
             phone_number=user_phone,
             role=RoleEnum.DOCTOR,
         )
-
         # Create doctor record
         doctor = Doctor(
             doctor_id=StringUtils.randomAlphaNumeric(8),
@@ -74,21 +78,22 @@ async def create_doctor(
             experience_years=experience_years,
             license_certificate=license_file_obj,
             user_id=doctor_user.id,
-            hospital_id=hospital_id,
+            hospital_id=hospital.hospital_id if hospital else None,
         )
 
         db.add(doctor)
         await db.commit()
         await db.refresh(doctor)
-
         # Return doctor with relationships loaded
         result = await db.execute(
             select(Doctor)
+            .join(Doctor.user)
+            # .join(Doctor.license_certificate)
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
-                selectinload(Doctor.hospital),
+                # selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor.doctor_id)
         )
@@ -97,9 +102,10 @@ async def create_doctor(
     except HTTPException:
         await db.rollback()
         raise
-    except Exception as e:
+    except Exception:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        # raise HTTPException(status_code=500, detail=str(e))
+        raise
 
 
 # async def upgrade_user_to_doctor(
@@ -406,7 +412,7 @@ async def update_doctor(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
-                selectinload(Doctor.hospital),
+                # selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor_id)
         )
@@ -466,8 +472,10 @@ async def delete_doctor(
 
         await db.delete(doctor)
         if doctor.license_certificate:
-            await delete_file(db, doctor.license_certificate.file_id)
-        await db.delete(doctor.user)  # Also delete associated user account
+            await delete_file(db, [doctor.license_certificate.file_id])
+        await db.delete(
+            doctor.user
+        )  # Also delete associated user account, call the funitons of user service later
         await db.commit()
         return {"message": "Doctor deleted successfully"}
 

@@ -12,7 +12,7 @@ class DoctorCreateSchema(BaseModel):
     specialization_department: str
     experience_years: int
     license_certificate_id: str
-    hospital_id: Optional[str] = None
+    # hospital_id: Optional[str] = None
     user: UserCreate
 
 
@@ -20,7 +20,7 @@ class DoctorUpdateSchema(BaseModel):
     specialization_department: Optional[str] = None
     experience_years: Optional[int] = None
     license_certificate_id: Optional[str] = None
-    hospital_id: Optional[str] = None
+    # hospital_id: Optional[str] = None
 
 
 class UserToDoctorUpgradeSchema(BaseModel):
@@ -69,3 +69,8 @@ class DoctorListResponseSchema(BaseModel):
 class DoctorDetailResponseSchema(BaseModel):
     message: str = "Doctor fetched successfully"
     data: DoctorWithHospitalResponseSchema
+
+
+class DoctorPostPatchResponse(BaseModel):
+    message: str = "Doctor created successfully"
+    data: DoctorResponseSchema

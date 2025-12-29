@@ -9,6 +9,7 @@ from app.modules.doctor.v1.schema import (
     DoctorCreateSchema,
     DoctorDetailResponseSchema,
     DoctorListResponseSchema,
+    DoctorPostPatchResponse,
     DoctorResponseSchema,
     DoctorUpdateSchema,
     DoctorWithHospitalResponseSchema,
@@ -38,7 +39,7 @@ async def create_new_doctor(
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
-):
+) -> DoctorPostPatchResponse:
     """Create a new doctor with user account."""
     created_doctor = await create_doctor(
         db=db,
@@ -49,11 +50,11 @@ async def create_new_doctor(
         user_email=data.user.email,
         user_password=data.user.password,
         user_phone=data.user.phone_number,
-        hospital_id=data.hospital_id,
-        hospital_admin_id=user.sub
+        # hospital_id=data.hospital_id,
+        hospital_admin_id=user.sub,
     )
     response = DoctorResponseSchema.model_validate(created_doctor)
-    return {"message": "Doctor created successfully", "data": response}
+    return DoctorPostPatchResponse(message="Doctor created successfully", data=response)
 
 
 @router.get("", summary="Get all doctors")
@@ -157,7 +158,7 @@ async def update_doctor_details(
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     # _=Depends(authorize),
-) -> DoctorDetailResponseSchema:
+) -> DoctorPostPatchResponse:
     """Update doctor details."""
     updated_doctor = await update_doctor(
         db=db,
@@ -166,10 +167,8 @@ async def update_doctor_details(
         role=user.role,
         **data.model_dump(exclude_unset=True),
     )
-    response = DoctorWithHospitalResponseSchema.model_validate(updated_doctor)
-    return DoctorDetailResponseSchema(
-        message="Doctor updated successfully", data=response
-    )
+    response = DoctorResponseSchema.model_validate(updated_doctor)
+    return DoctorPostPatchResponse(message="Doctor updated successfully", data=response)
 
 
 @router.delete("/{doctor_id}", summary="Delete doctor")

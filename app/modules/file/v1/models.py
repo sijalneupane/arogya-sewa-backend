@@ -28,8 +28,8 @@ class File(Base, TimestampMixin):
         SQLEnum(FileTypeEnum, name="file_type_enum"), nullable=False
     )
 
-    # Relationship to User model (assuming a user can have multiple files)
-    doctor_license: Mapped["Doctor"] = relationship(
+    # One-to-one relationship: one file can only be used by one doctor as license
+    doctor_license: Mapped[Optional["Doctor"]] = relationship(
         uselist=False, back_populates="license_certificate"
     )
     # Many-to-one relationship: many files can belong to one hospital

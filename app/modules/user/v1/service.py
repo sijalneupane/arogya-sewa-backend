@@ -50,7 +50,7 @@ async def create_user(
         result = await db.execute(
             select(User)
             .options(selectinload(User.role), selectinload(User.files))
-            .where(User.id == new_user.id, File.file_type == FileTypeEnum.PROFILE)
+            .where(User.id == new_user.id)
         )
         user_with_role = result.scalar_one()
         return user_with_role
@@ -79,11 +79,7 @@ async def get_user_list(db: AsyncSession, role: Optional[RoleEnum] = None):
         UserListResponse with list of users
     """
     try:
-        query = (
-            select(User)
-            .options(selectinload(User.role), selectinload(User.files))
-            .where(File.file_type == FileTypeEnum.PROFILE)
-        )
+        query = select(User).options(selectinload(User.role), selectinload(User.files))
 
         # Apply role filter if provided
         if role:

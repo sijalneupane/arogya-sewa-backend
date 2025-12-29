@@ -25,6 +25,7 @@ class Doctor(Base, TimestampMixin):
         String(100),
         ForeignKey("file.file_id"),
         nullable=True,
+        unique=True,  # One file can only be used by one doctor
     )
 
     # Foreign key to User (required)

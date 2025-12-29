@@ -38,6 +38,7 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request, exc):
+    print("+++Error occurred:", exc.args)
     return JSONResponse(
         status_code=500,
         content={"detail": str(exc)},

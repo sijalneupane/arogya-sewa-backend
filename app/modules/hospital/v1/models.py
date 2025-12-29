@@ -26,7 +26,7 @@ class Hospital(Base, TimestampMixin):
     )
     opened_date: Mapped[Date] = mapped_column(Date, nullable=True)
     admin_id: Mapped[str] = mapped_column(
-        ForeignKey("user.id"), nullable=False, unique=False
+        ForeignKey("user.id"), nullable=False, unique=True
     )
 
     # Relationships
