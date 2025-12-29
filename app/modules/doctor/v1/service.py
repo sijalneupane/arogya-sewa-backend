@@ -207,7 +207,7 @@ async def get_doctor_by_id(db: AsyncSession, doctor_id: str) -> Doctor:
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
-                selectinload(Doctor.hospital),
+                selectinload(Doctor.hospital).selectinload(Hospital.files),
             )
             .where(Doctor.doctor_id == doctor_id)
         )
@@ -230,9 +230,11 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
-                selectinload(Doctor.hospital),
+                selectinload(Doctor.hospital).selectinload(Hospital.files),
             )
-            .where(Doctor.user_id == user_id)
+            .where(
+                Doctor.user_id == user_id,
+            )
         )
 
         doctor = result.scalar_one_or_none()

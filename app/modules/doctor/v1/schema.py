@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.common.enums.role_enum import RoleEnum
 from app.modules.file.v1.schemas import FileResponseSchema
+from app.modules.hospital.v1.schema import HospitalResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
@@ -39,14 +40,14 @@ class DoctorResponseSchema(BaseModel):
     user: UserResponse
 
 
-class HospitalBasicInfo(BaseModel):
-    """Basic hospital info for doctor response (to avoid circular references)"""
+# class HospitalBasicInfo(BaseModel):
+#     """Basic hospital info for doctor response (to avoid circular references)"""
 
-    model_config = ConfigDict(from_attributes=True)
+#     model_config = ConfigDict(from_attributes=True)
 
-    hospital_id: str
-    name: str
-    location: str
+#     hospital_id: str
+#     name: str
+#     location: str
 
 
 class DoctorWithHospitalResponseSchema(BaseModel):
@@ -57,7 +58,7 @@ class DoctorWithHospitalResponseSchema(BaseModel):
     experience_years: int
     license_certificate: Optional[FileResponseSchema] = None
     user: UserResponse
-    hospital: Optional[HospitalBasicInfo] = None
+    hospital: Optional[HospitalResponseSchema] = None
 
 
 class DoctorListResponseSchema(BaseModel):
