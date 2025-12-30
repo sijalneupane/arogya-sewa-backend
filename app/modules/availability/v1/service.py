@@ -10,6 +10,7 @@ from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
+from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
 
 
@@ -19,18 +20,13 @@ async def create_availability(
     availability_date: date,
     start_time: time,
     end_time: time,
+    role: RoleEnum,
+    auth_user_id: str,
     note: Optional[str] = None,
 ) -> Availability:
     """Create a new availability slot for a doctor"""
     try:
-        # Verify doctor exists
-        doctor_result = await db.execute(
-            select(Doctor).where(Doctor.doctor_id == doctor_id)
-        )
-        doctor = doctor_result.scalar_one_or_none()
-        if not doctor:
-            raise HTTPException(status_code=404, detail="Doctor not found")
-
+        await can_user_modify_availability(db, auth_user_id, doctor_id, role)
         # Check for overlapping availability on the same date
         overlap_result = await db.execute(
             select(Availability).where(
@@ -163,6 +159,8 @@ async def get_all_availabilities(
 async def update_availability(
     db: AsyncSession,
     availability_id: str,
+    role: RoleEnum,
+    auth_user_id: str,
     availability_date: Optional[date] = None,
     start_time: Optional[time] = None,
     end_time: Optional[time] = None,
@@ -172,6 +170,9 @@ async def update_availability(
     try:
         # Get existing availability
         availability = await get_availability_by_id(db, availability_id)
+        can_change = await can_user_modify_availability(
+            db, auth_user_id, availability.doctor_id, role
+        )
 
         # Prepare updated values
         updated_date = availability_date if availability_date else availability.date
@@ -231,10 +232,13 @@ async def update_availability(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def delete_availability(db: AsyncSession, availability_id: str) -> None:
+async def delete_availability(db: AsyncSession, availability_id: str, role: RoleEnum, auth_user_id: str) -> None:
     """Delete an availability slot"""
     try:
         availability = await get_availability_by_id(db, availability_id)
+        can_change = await can_user_modify_availability(
+            db, auth_user_id, availability.doctor_id, role
+        )
         await db.delete(availability)
         await db.commit()
     except HTTPException:
@@ -246,40 +250,37 @@ async def delete_availability(db: AsyncSession, availability_id: str) -> None:
 
 
 async def can_user_modify_availability(
-    db: AsyncSession, user_id: str, doctor_id: str
-) -> bool:
-    """
-    Check if a user can modify availability for a doctor.
-    Returns True if:
-    - User is the doctor themselves
-    - User is a hospital admin for the doctor's hospital
-    """
-    # Get user with role and relationships
-    user_result = await db.execute(
-        select(User)
-        .options(
-            selectinload(User.role),
-            selectinload(User.doctor),
-            selectinload(User.hospital),
-        )
-        .where(User.id == user_id)
-    )
-    user = user_result.scalar_one_or_none()
-    if not user:
-        return False
+    db: AsyncSession, authenticated_user_id: str, doctor_id: str, role: RoleEnum
+):
+    """Check if the user can modify availability for the given doctor"""
 
-    # Check if user is the doctor
-    if user.doctor and user.doctor.doctor_id == doctor_id:
-        return True
-
-    # Check if user is hospital admin for doctor's hospital
-    if user.hospital and user.role.role == RoleEnum.HOSPITAL_ADMIN:
-        # Get the doctor's hospital
+    if role is RoleEnum.DOCTOR:
+        # If user is the doctor themselves
         doctor_result = await db.execute(
             select(Doctor).where(Doctor.doctor_id == doctor_id)
         )
         doctor = doctor_result.scalar_one_or_none()
-        if doctor and doctor.hospital_id == user.hospital.hospital_id:
-            return True
-
-    return False
+        if not doctor:
+            raise HTTPException(
+                status_code=404, detail="Doctor not found for doctor_id: " + doctor_id
+            )
+        if doctor.user_id != authenticated_user_id:
+            raise HTTPException(
+                status_code=403, detail="Authenticated doctor should match doctor_id"
+            )
+    # If user is a hospital admin
+    if role is RoleEnum.HOSPITAL_ADMIN:
+        hospital_admin_of_doctor = await db.execute(
+            select(Hospital.admin).where(
+                and_(
+                    Hospital.admin_id == authenticated_user_id,
+                    Doctor.doctor_id == doctor_id,
+                )
+            )
+        )
+        if not hospital_admin_of_doctor.scalar_one_or_none():
+            raise HTTPException(
+                status_code=403,
+                detail="Authenticated hospital admin and provided doctor_id do not match for the same hospital",
+            )
+    pass  # User is super admin or passed checks; allow modification

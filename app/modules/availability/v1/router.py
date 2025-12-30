@@ -15,7 +15,7 @@ from app.modules.availability.v1.schema import (
     AvailabilityUpdateSchema,
 )
 from app.modules.availability.v1.service import (
-    can_user_modify_availability,
+    # can_user_modify_availability,
     create_availability,
     delete_availability,
     get_all_availabilities,
@@ -41,13 +41,6 @@ async def create_new_availability(
     Create a new availability slot.
     Only the doctor themselves or their hospital admin can create availability.
     """
-    # Check authorization
-    can_modify = await can_user_modify_availability(db, user.sub, data.doctor_id)
-    if not can_modify:
-        raise HTTPException(
-            status_code=403,
-            detail="You don't have permission to create availability for this doctor",
-        )
 
     availability = await create_availability(
         db=db,
@@ -55,6 +48,8 @@ async def create_new_availability(
         availability_date=data.date,
         start_time=data.start_time,
         end_time=data.end_time,
+        role=user.role,
+        auth_user_id=user.sub,
         note=data.note,
     )
     response = AvailabilityResponseSchema.model_validate(availability)
@@ -125,19 +120,11 @@ async def update_availability_endpoint(
     Update an existing availability slot.
     Only the doctor themselves or their hospital admin can update.
     """
-    # Get the availability to check doctor_id
-    existing = await get_availability_by_id(db, availability_id)
-
-    # Check authorization
-    can_modify = await can_user_modify_availability(db, user.sub, existing.doctor_id)
-    if not can_modify:
-        raise HTTPException(
-            status_code=403,
-            detail="You don't have permission to update this availability",
-        )
 
     availability = await update_availability(
         db=db,
+        role=user.role,
+        auth_user_id=user.sub,
         availability_id=availability_id,
         availability_date=data.date,
         start_time=data.start_time,
@@ -161,16 +148,8 @@ async def delete_availability_endpoint(
     Delete an availability slot.
     Only the doctor themselves or their hospital admin can delete.
     """
-    # Get the availability to check doctor_id
-    existing = await get_availability_by_id(db, availability_id)
 
-    # Check authorization
-    can_modify = await can_user_modify_availability(db, user.sub, existing.doctor_id)
-    if not can_modify:
-        raise HTTPException(
-            status_code=403,
-            detail="You don't have permission to delete this availability",
-        )
-
-    await delete_availability(db=db, availability_id=availability_id)
+    await delete_availability(
+        db=db, availability_id=availability_id, role=user.role, auth_user_id=user.sub
+    )
     return {"message": "Availability deleted successfully"}
