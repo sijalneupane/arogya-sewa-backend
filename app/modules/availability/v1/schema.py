@@ -69,7 +69,7 @@ class AvailabilityResponseSchema(BaseModel):
     end_date_time: datetime
     note: Optional[str] = None
     is_booked: bool = False
-    doctor: DoctorBasicInfo
+    # doctor: DoctorBasicInfo
 
 
 class AvailabilityListResponseSchema(BaseModel):

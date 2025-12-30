@@ -61,7 +61,7 @@ async def create_availability(
         # Return with doctor relationship loaded
         result = await db.execute(
             select(Availability)
-            .options(selectinload(Availability.doctor).selectinload(Doctor.user))
+            # .options(selectinload(Availability.doctor).selectinload(Doctor.user))
             .where(Availability.availability_id == availability.availability_id)
         )
         return result.scalar_one()
