@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.authorization import authorize
@@ -45,9 +45,8 @@ async def create_new_availability(
     availability = await create_availability(
         db=db,
         doctor_id=data.doctor_id,
-        availability_date=data.date,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_date_time=data.start_date_time,
+        end_date_time=data.end_date_time,
         role=user.role,
         auth_user_id=user.sub,
         note=data.note,
@@ -126,9 +125,8 @@ async def update_availability_endpoint(
         role=user.role,
         auth_user_id=user.sub,
         availability_id=availability_id,
-        availability_date=data.date,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_date_time=data.start_date_time,
+        end_date_time=data.end_date_time,
         note=data.note,
     )
     response = AvailabilityResponseSchema.model_validate(availability)

@@ -1,5 +1,4 @@
-from datetime import date as date_type
-from datetime import time
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -9,35 +8,33 @@ class AvailabilityCreateSchema(BaseModel):
     """Schema for creating a new availability slot"""
 
     doctor_id: str = Field(..., min_length=8, max_length=8)
-    date: date_type
-    start_time: time
-    end_time: time
+    start_date_time: datetime
+    end_date_time: datetime
     note: Optional[str] = Field(None, max_length=500)
 
-    @field_validator("end_time")
+    @field_validator("end_date_time")
     @classmethod
-    def validate_end_time_after_start_time(cls, v, info):
-        """Ensure end_time is after start_time"""
-        if "start_time" in info.data and v <= info.data["start_time"]:
-            raise ValueError("end_time must be after start_time")
+    def validate_end_date_time_after_start(cls, v, info):
+        """Ensure end_date_time is after start_date_time"""
+        if "start_date_time" in info.data and v <= info.data["start_date_time"]:
+            raise ValueError("end_date_time must be after start_date_time")
         return v
 
 
 class AvailabilityUpdateSchema(BaseModel):
     """Schema for updating an existing availability slot"""
 
-    date: Optional[date_type] = None
-    start_time: Optional[time] = None
-    end_time: Optional[time] = None
+    start_date_time: Optional[datetime] = None
+    end_date_time: Optional[datetime] = None
     note: Optional[str] = Field(None, max_length=500)
 
-    @field_validator("end_time")
+    @field_validator("end_date_time")
     @classmethod
-    def validate_end_time_after_start_time(cls, v, info):
-        """Ensure end_time is after start_time if both are provided"""
-        if v and "start_time" in info.data and info.data["start_time"]:
-            if v <= info.data["start_time"]:
-                raise ValueError("end_time must be after start_time")
+    def validate_end_date_time_after_start(cls, v, info):
+        """Ensure end_date_time is after start_date_time if both are provided"""
+        if v and "start_date_time" in info.data and info.data["start_date_time"]:
+            if v <= info.data["start_date_time"]:
+                raise ValueError("end_date_time must be after start_date_time")
         return v
 
 
@@ -68,9 +65,8 @@ class AvailabilityResponseSchema(BaseModel):
 
     availability_id: str
     doctor_id: str
-    date: date_type
-    start_time: time
-    end_time: time
+    start_date_time: datetime
+    end_date_time: datetime
     note: Optional[str] = None
     is_booked: bool = False
     doctor: DoctorBasicInfo

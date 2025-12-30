@@ -1,8 +1,7 @@
-from datetime import date as date_type
-from datetime import time as time_type
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, Date, ForeignKey, String, Text, Time
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
@@ -21,9 +20,12 @@ class Availability(Base, TimestampMixin):
     doctor_id: Mapped[str] = mapped_column(
         ForeignKey("doctor.doctor_id", ondelete="CASCADE"), nullable=False, index=True
     )
-    date: Mapped[date_type] = mapped_column(Date, nullable=False)
-    start_time: Mapped[time_type] = mapped_column(Time, nullable=False)
-    end_time: Mapped[time_type] = mapped_column(Time, nullable=False)
+    start_date_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    end_date_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_booked: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false", index=True
@@ -33,4 +35,4 @@ class Availability(Base, TimestampMixin):
     doctor: Mapped["Doctor"] = relationship(back_populates="availabilities")
 
     def __repr__(self) -> str:
-        return f"Availability(id={self.availability_id}, doctor_id={self.doctor_id}, date={self.date})"
+        return f"Availability(id={self.availability_id}, doctor_id={self.doctor_id}, start={self.start_date_time})"
