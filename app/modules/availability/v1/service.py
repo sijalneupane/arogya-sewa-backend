@@ -161,6 +161,11 @@ async def update_availability(
     try:
         # Get existing availability
         availability = await get_availability_by_id(db, availability_id)
+        if availability.is_booked:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot update a booked availability slot. View appointment details instead.",
+            )
         await can_user_modify_availability(
             db, auth_user_id, availability.doctor_id, role
         )
@@ -227,6 +232,11 @@ async def delete_availability(
     """Delete an availability slot"""
     try:
         availability = await get_availability_by_id(db, availability_id)
+        if availability.is_booked:
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot delete a booked availability slot. View appointment details instead.",
+            )
         await can_user_modify_availability(
             db, auth_user_id, availability.doctor_id, role
         )
