@@ -1,16 +1,14 @@
-from datetime import date, time
-from enum import StrEnum
+from datetime import date, datetime, time
 from typing import Annotated, Any, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_serializer, model_validator
 
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.schema.pagination import PaginationMeta
-
-
-class AppointmentStatusEnum(StrEnum):
-    SCHEDULED = "scheduled"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+from app.modules.availability.v1.schema import AvailabilityResponseSchema
+from app.modules.doctor.v1.schema import DoctorResponseSchema
+from app.modules.patient.v1.schema import PatientResponse
+from app.modules.user.v1.schema import UserResponse
 
 
 class ChangedTimeInfo(BaseModel):
@@ -50,43 +48,35 @@ class AppointmentUpdateSchema(BaseModel):
     )
 
 
-class DoctorBasicInfo(BaseModel):
-    """Basic doctor information for appointment response"""
+# class DoctorBasicInfo(BaseModel):
+#     """Basic doctor information for appointment response"""
 
-    doctor_id: str
-    specialization_department: str
-    experience_years: int
-    user_name: str
-    user_email: str
+#     doctor_id: str
+#     user: UserResponse
 
-    class Config:
-        from_attributes = True
+#     class Config:
+#         from_attributes = True
 
 
-class PatientBasicInfo(BaseModel):
-    """Basic patient information for appointment response"""
+# class PatientBasicInfo(BaseModel):
+#     """Basic patient information for appointment response"""
 
-    patient_id: str
-    gender: str
-    blood_group: str
-    user_name: str
-    user_email: str
-    user_phone: str
+#     patient_id: str
+#     user: UserResponse
 
-    class Config:
-        from_attributes = True
+#     class Config:
+#         from_attributes = True
 
 
-class AvailabilityBasicInfo(BaseModel):
-    """Basic availability information for appointment response"""
+# class AvailabilityBasicInfo(BaseModel):
+#     """Basic availability information for appointment response"""
 
-    availability_id: str
-    date: date
-    start_time: time
-    end_time: time
+#     availability_id: str
+#     start_date_time: datetime
+#     end_date_time: datetime
 
-    class Config:
-        from_attributes = True
+#     class Config:
+#         from_attributes = True
 
 
 class AppointmentResponseSchema(BaseModel):
@@ -96,12 +86,13 @@ class AppointmentResponseSchema(BaseModel):
     patient_id: str
     doctor_id: str
     availability_id: str
-    appointment_date: date
+    booked_by_user_id: str
+    availability: AvailabilityResponseSchema
     reason: Optional[str]
     notes: Optional[str]
-    status: str
-    created_at: str
-    updated_at: str
+    status: AppointmentStatusEnum
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
@@ -111,98 +102,27 @@ class AppointmentDetailResponseSchema(BaseModel):
     """Detailed appointment response with related entities"""
 
     appointment_id: str
-    patient: PatientBasicInfo
-    doctor: DoctorBasicInfo
-    availability: AvailabilityBasicInfo
-    appointment_date: date
+    patient: PatientResponse
+    doctor: DoctorResponseSchema
+    booked_by: UserResponse
+    availability: AvailabilityResponseSchema
     reason: Optional[str]
     notes: Optional[str]
-    status: str
-    booked_by_user_id: str
+    status: AppointmentStatusEnum
+    # booked_by_user_id: str
     changed_times: list[ChangedTimeInfo]
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_appointment(cls, data: Any) -> Any:
-        """
-        Validate and transform appointment data from ORM model.
-        Automatically extracts nested relationships.
-        """
-        # If it's already a dict, return as-is
-        if isinstance(data, dict):
-            return data
-
-        # If it's an ORM model, extract the data
-        if hasattr(data, "__dict__"):
-            # Extract patient info
-            patient_info = PatientBasicInfo(
-                patient_id=data.patient.patient_id,
-                gender=data.patient.gender,
-                blood_group=data.patient.blood_group,
-                user_name=data.patient.user.name,
-                user_email=data.patient.user.email,
-                user_phone=data.patient.user.phone_number,
-            )
-
-            # Extract doctor info
-            doctor_info = DoctorBasicInfo(
-                doctor_id=data.doctor.doctor_id,
-                specialization_department=data.doctor.specialization_department,
-                experience_years=data.doctor.experience_years,
-                user_name=data.doctor.user.name,
-                user_email=data.doctor.user.email,
-            )
-
-            # Extract availability info
-            availability_info = AvailabilityBasicInfo(
-                availability_id=data.availability.availability_id,
-                date=data.availability.date,
-                start_time=data.availability.start_time,
-                end_time=data.availability.end_time,
-            )
-
-            # Extract changed times info
-            changed_times_info = []
-            if hasattr(data, "changed_times") and data.changed_times:
-                for ct in data.changed_times:
-                    changed_times_info.append(
-                        ChangedTimeInfo(
-                            changed_time_id=ct.changed_time_id,
-                            start_time=ct.start_time,
-                            end_time=ct.end_time,
-                            reason=ct.reason,
-                            changed_at=ct.changed_at.isoformat(),
-                        )
-                    )
-
-            return {
-                "appointment_id": data.appointment_id,
-                "patient": patient_info,
-                "doctor": doctor_info,
-                "availability": availability_info,
-                "appointment_date": data.appointment_date,
-                "reason": data.reason,
-                "notes": data.notes,
-                "status": data.status,
-                "booked_by_user_id": data.booked_by_user_id,
-                "changed_times": changed_times_info,
-                "created_at": data.created_at.isoformat(),
-                "updated_at": data.updated_at.isoformat(),
-            }
-
-        return data
 
 
 class AppointmentListResponse(BaseModel):
     """Response for list of appointments with pagination metadata"""
 
     message: str
-    data: list[AppointmentDetailResponseSchema]
+    data: list[AppointmentResponseSchema]
     paginationMeta: PaginationMeta
 
 

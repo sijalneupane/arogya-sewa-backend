@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
@@ -6,6 +6,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.models import Appointment
@@ -40,12 +41,21 @@ async def validate_availability_for_booking(
     if not availability:
         raise HTTPException(status_code=404, detail="Availability slot not found")
 
+    # Check if there's already an appointment for this availability (more robust than just checking is_booked flag)
+    existing_appointment = await db.execute(
+        select(Appointment).where(Appointment.availability_id == availability_id)
+    )
+    if existing_appointment.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400, detail="This availability slot is already booked"
+        )
+
     if availability.is_booked:
         raise HTTPException(
             status_code=400, detail="This availability slot is already booked"
         )
 
-    if availability.date < date.today():
+    if availability.start_date_time < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=400, detail="Cannot book appointments for past dates"
         )
@@ -89,10 +99,8 @@ async def create_appointment(
         doctor_id=availability.doctor_id,
         availability_id=availability_id,
         booked_by_user_id=user_id,
-        appointment_date=availability.date,
         reason=reason,
         notes=notes,
-        status="scheduled",
     )
 
     # Mark availability as booked
@@ -116,10 +124,22 @@ async def get_appointment_by_id(
     result = await db.execute(
         select(Appointment)
         .options(
-            selectinload(Appointment.patient).selectinload(Patient.user),
-            selectinload(Appointment.doctor).selectinload(Doctor.user),
+            selectinload(Appointment.patient)
+            .selectinload(Patient.user)
+            .selectinload(User.role),
+            selectinload(Appointment.patient)
+            .selectinload(Patient.user)
+            .selectinload(User.files),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.user)
+            .selectinload(User.role),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.user)
+            .selectinload(User.files),
+            selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
             selectinload(Appointment.availability),
-            selectinload(Appointment.booked_by),
+            selectinload(Appointment.booked_by).selectinload(User.role),
+            selectinload(Appointment.booked_by).selectinload(User.files),
             selectinload(Appointment.changed_times),
         )
         .where(Appointment.appointment_id == appointment_id)
@@ -132,7 +152,7 @@ async def update_appointment(
     appointment_id: str,
     reason: Optional[str] = None,
     notes: Optional[str] = None,
-    status: Optional[str] = None,
+    status: Optional[AppointmentStatusEnum] = None,
 ) -> Appointment:
     """
     Update an appointment.
@@ -272,7 +292,7 @@ async def get_all_appointments_super_admin(
     doctor_name: Optional[str] = None,
     patient_id: Optional[str] = None,
     patient_name: Optional[str] = None,
-    status: Optional[str] = None,
+    status: Optional[AppointmentStatusEnum] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     appointment_date: Optional[date] = None,
@@ -381,7 +401,7 @@ async def get_all_appointments_super_admin(
 async def get_patient_appointments(
     db: AsyncSession,
     user_id: str,
-    status: Optional[str] = None,
+    status: Optional[AppointmentStatusEnum] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     appointment_date: Optional[date] = None,
@@ -431,13 +451,20 @@ async def get_patient_appointments(
     if status:
         conditions.append(Appointment.status == status)
 
+    # Date filtering through availability relationship
     if appointment_date:
-        conditions.append(Appointment.appointment_date == appointment_date)
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
+        conditions.append(func.date(Availability.start_date_time) == appointment_date)
     elif date_from or date_to:
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
         if date_from:
-            conditions.append(Appointment.appointment_date >= date_from)
+            conditions.append(func.date(Availability.start_date_time) >= date_from)
         if date_to:
-            conditions.append(Appointment.appointment_date <= date_to)
+            conditions.append(func.date(Availability.start_date_time) <= date_to)
 
     # Apply all conditions
     query = query.where(and_(*conditions))
@@ -449,7 +476,7 @@ async def get_patient_appointments(
 
     # Apply ordering and pagination (page is 1-indexed)
     skip = (page - 1) * size
-    query = query.order_by(Appointment.appointment_date.desc())
+    query = query.order_by(Appointment.created_at.desc())
     query = query.offset(skip).limit(size)
 
     # Execute query
@@ -462,7 +489,7 @@ async def get_patient_appointments(
 async def get_doctor_appointments(
     db: AsyncSession,
     user_id: str,
-    status: Optional[str] = None,
+    status: Optional[AppointmentStatusEnum] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     appointment_date: Optional[date] = None,
@@ -512,13 +539,20 @@ async def get_doctor_appointments(
     if status:
         conditions.append(Appointment.status == status)
 
+    # Date filtering through availability relationship
     if appointment_date:
-        conditions.append(Appointment.appointment_date == appointment_date)
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
+        conditions.append(func.date(Availability.start_date_time) == appointment_date)
     elif date_from or date_to:
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
         if date_from:
-            conditions.append(Appointment.appointment_date >= date_from)
+            conditions.append(func.date(Availability.start_date_time) >= date_from)
         if date_to:
-            conditions.append(Appointment.appointment_date <= date_to)
+            conditions.append(func.date(Availability.start_date_time) <= date_to)
 
     # Apply all conditions
     query = query.where(and_(*conditions))
@@ -530,7 +564,7 @@ async def get_doctor_appointments(
 
     # Apply ordering and pagination (page is 1-indexed)
     skip = (page - 1) * size
-    query = query.order_by(Appointment.appointment_date.desc())
+    query = query.order_by(Appointment.created_at.desc())
     query = query.offset(skip).limit(size)
 
     # Execute query
@@ -546,7 +580,7 @@ async def get_hospital_admin_appointments(
     doctor_name: Optional[str] = None,
     patient_id: Optional[str] = None,
     patient_name: Optional[str] = None,
-    status: Optional[str] = None,
+    status: Optional[AppointmentStatusEnum] = None,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
     appointment_date: Optional[date] = None,
@@ -631,13 +665,20 @@ async def get_hospital_admin_appointments(
     if status:
         conditions.append(Appointment.status == status)
 
+    # Date filtering through availability relationship
     if appointment_date:
-        conditions.append(Appointment.appointment_date == appointment_date)
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
+        conditions.append(func.date(Availability.start_date_time) == appointment_date)
     elif date_from or date_to:
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
         if date_from:
-            conditions.append(Appointment.appointment_date >= date_from)
+            conditions.append(func.date(Availability.start_date_time) >= date_from)
         if date_to:
-            conditions.append(Appointment.appointment_date <= date_to)
+            conditions.append(func.date(Availability.start_date_time) <= date_to)
 
     # Apply all conditions
     query = query.where(and_(*conditions))
@@ -654,7 +695,7 @@ async def get_hospital_admin_appointments(
 
     # Apply ordering and pagination (page is 1-indexed)
     skip = (page - 1) * size
-    query = query.order_by(Appointment.appointment_date.desc())
+    query = query.order_by(Appointment.created_at.desc())
     query = query.offset(skip).limit(size)
 
     # Execute query

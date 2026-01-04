@@ -1,9 +1,10 @@
 from datetime import date as date_type
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Date, ForeignKey, String, Text
+from sqlalchemy import Date, Enum as SQLEnum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
@@ -36,20 +37,19 @@ class Appointment(Base, TimestampMixin):
     booked_by_user_id: Mapped[str] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), nullable=False, index=True
     )
-
-    # Appointment details
-    appointment_date: Mapped[date_type] = mapped_column(
-        Date, nullable=False, index=True
-    )
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20),
+    status: Mapped[AppointmentStatusEnum] = mapped_column(
+        SQLEnum(
+            AppointmentStatusEnum,
+            name="appointment_status_enum",
+            values_callable=lambda x: [e.value for e in x],
+        ),
         nullable=False,
-        default="scheduled",
-        server_default="scheduled",
+        default=AppointmentStatusEnum.SCHEDULED,
+        server_default=AppointmentStatusEnum.SCHEDULED.value,
         index=True,
-    )  # scheduled, completed, cancelled
+    )
 
     # Relationships
     patient: Mapped["Patient"] = relationship()

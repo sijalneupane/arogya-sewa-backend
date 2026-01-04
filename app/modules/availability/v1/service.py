@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -112,7 +112,7 @@ async def get_availabilities_by_doctor(
 
     # Filter for future dates if requested
     if future_only:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         query = query.where(Availability.start_date_time >= now)
 
     # Filter by booking status if specified
@@ -135,7 +135,7 @@ async def get_all_availabilities(
 
     # Filter for future dates if requested
     if future_only:
-        now = datetime.now()
+        now = datetime.now(timezone.utc)
         query = query.where(Availability.start_date_time >= now)
 
     # Filter by booking status if specified
