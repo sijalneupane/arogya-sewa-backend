@@ -116,3 +116,6 @@ poetry.lock
 
 # Optional if using Pyenv
 .python-version
+
+*firebase*.json
+firebase.b64
