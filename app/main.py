@@ -1,25 +1,40 @@
+from contextlib import asynccontextmanager
 from logging import config
 from os import error
-from fastapi import FastAPI, HTTPException, status
+
+from fastapi import FastAPI, status
 from fastapi.exceptions import RequestValidationError, ResponseValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.app import app_health
 from app.core.config import settings
 from app.core.configuration.cloudinary_config import configure_cloudinary
+from app.core.configuration.firebase_config import init_firebase
+from app.modules.appointment.v1 import changed_time_router
+from app.modules.appointment.v1 import router as appointment_router
 from app.modules.auth.v1 import router as auth_router
 from app.modules.availability.v1 import router as availability_router
-from app.modules.appointment.v1 import router as appointment_router
-from app.modules.appointment.v1 import changed_time_router
 from app.modules.doctor.v1 import router as doctor_router
+from app.modules.file.v1 import router as file_router
 from app.modules.hospital.v1 import router as hospital_router
 from app.modules.user.v1 import router as user_router
-from app.modules.file.v1 import router as file_router
-from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title=settings.APP_NAME, version=settings.VERSION)
 
-configure_cloudinary()
+def startup_event():
+    init_firebase()
+    configure_cloudinary()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup code
+    startup_event()
+    yield
+    # Shutdown code (if any)
+
+
+app = FastAPI(title=settings.APP_NAME, version=settings.VERSION, lifespan=lifespan)
 
 allowed_origins = [
     "http://localhost:5173",
