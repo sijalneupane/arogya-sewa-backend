@@ -320,10 +320,22 @@ async def get_all_appointments_super_admin(
     """
     # Base query with all relationships
     query = select(Appointment).options(
-        selectinload(Appointment.patient).selectinload(Patient.user),
-        selectinload(Appointment.doctor).selectinload(Doctor.user),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.role),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.role),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.availability),
-        selectinload(Appointment.booked_by),
+        selectinload(Appointment.booked_by).selectinload(User.role),
+        selectinload(Appointment.booked_by).selectinload(User.files),
         selectinload(Appointment.changed_times),
     )
 
@@ -438,10 +450,22 @@ async def get_patient_appointments(
 
     # Base query with all relationships
     query = select(Appointment).options(
-        selectinload(Appointment.patient).selectinload(Patient.user),
-        selectinload(Appointment.doctor).selectinload(Doctor.user),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.role),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.role),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.availability),
-        selectinload(Appointment.booked_by),
+        selectinload(Appointment.booked_by).selectinload(User.role),
+        selectinload(Appointment.booked_by).selectinload(User.files),
         selectinload(Appointment.changed_times),
     )
 
@@ -526,10 +550,22 @@ async def get_doctor_appointments(
 
     # Base query with all relationships
     query = select(Appointment).options(
-        selectinload(Appointment.patient).selectinload(Patient.user),
-        selectinload(Appointment.doctor).selectinload(Doctor.user),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.role),
+        selectinload(Appointment.patient)
+        .selectinload(Patient.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.role),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.user)
+        .selectinload(User.files),
+        selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.availability),
-        selectinload(Appointment.booked_by),
+        selectinload(Appointment.booked_by).selectinload(User.role),
+        selectinload(Appointment.booked_by).selectinload(User.files),
         selectinload(Appointment.changed_times),
     )
 
@@ -627,10 +663,22 @@ async def get_hospital_admin_appointments(
         select(Appointment)
         .join(Doctor)
         .options(
-            selectinload(Appointment.patient).selectinload(Patient.user),
-            selectinload(Appointment.doctor).selectinload(Doctor.user),
+            selectinload(Appointment.patient)
+            .selectinload(Patient.user)
+            .selectinload(User.role),
+            selectinload(Appointment.patient)
+            .selectinload(Patient.user)
+            .selectinload(User.files),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.user)
+            .selectinload(User.role),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.user)
+            .selectinload(User.files),
+            selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
             selectinload(Appointment.availability),
-            selectinload(Appointment.booked_by),
+            selectinload(Appointment.booked_by).selectinload(User.role),
+            selectinload(Appointment.booked_by).selectinload(User.files),
             selectinload(Appointment.changed_times),
         )
     )

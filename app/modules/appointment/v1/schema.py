@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, Field, field_serializer, model_validator
+from pydantic import BaseModel, Field
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.schema.pagination import PaginationMeta
@@ -118,11 +118,66 @@ class AppointmentDetailResponseSchema(BaseModel):
         from_attributes = True
 
 
+# Future use cases for role-based detailed responses by removing the patient or doctor info as needed
+
+
+# class ApppointmentDetailResponseSchemaForDoctorList(BaseModel):
+#     """Detailed appointment response for doctor listing"""
+
+#     appointment_id: str
+#     patient: PatientResponse
+#     booked_by: UserResponse
+#     availability: AvailabilityResponseSchema
+#     reason: Optional[str]
+#     notes: Optional[str]
+#     status: AppointmentStatusEnum
+#     changed_times: list[ChangedTimeInfo]
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+
+# class AppointmentDetailResponseSchemaForPatientList(BaseModel):
+#     """Detailed appointment response for patient listing"""
+
+#     appointment_id: str
+#     doctor: DoctorResponseSchema
+#     booked_by: UserResponse
+#     availability: AvailabilityResponseSchema
+#     reason: Optional[str]
+#     notes: Optional[str]
+#     status: AppointmentStatusEnum
+#     changed_times: list[ChangedTimeInfo]
+#     created_at: datetime
+#     updated_at: datetime
+
+#     class Config:
+#         from_attributes = True
+
+
+# class AppointmentListResponseForDoctor(BaseModel):
+#     """Response for list of appointments for doctor with pagination metadata"""
+
+#     message: str
+#     data: list[ApppointmentDetailResponseSchemaForDoctorList]
+#     paginationMeta: PaginationMeta
+
+
+# class AppointmentListResponseForPatient(BaseModel):
+#     """Response for list of appointments for patient with pagination metadata"""
+
+#     message: str
+#     data: list[AppointmentDetailResponseSchemaForPatientList]
+#     paginationMeta: PaginationMeta
+
+
 class AppointmentListResponse(BaseModel):
     """Response for list of appointments with pagination metadata"""
 
     message: str
-    data: list[AppointmentResponseSchema]
+    data: list[AppointmentDetailResponseSchema]
     paginationMeta: PaginationMeta
 
 
