@@ -18,8 +18,9 @@ def init_firebase():
 
         if not firebase_base64:
             raise RuntimeError("Firebase credentials not found")
-
-        cred_dict = json.loads(base64.b64decode(firebase_base64).decode("utf-8"))
+        cred_dict = json.loads(
+            base64.b64decode(firebase_base64).decode(encoding="utf-8")
+        )
 
         cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
