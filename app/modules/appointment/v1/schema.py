@@ -1,27 +1,28 @@
-from datetime import date, datetime, time
+from datetime import date, datetime
 from typing import Annotated, Optional
 
 from pydantic import BaseModel, Field
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.schema.pagination import PaginationMeta
+from app.modules.appointment.v1.changed_time_schema import AppointmentChangedTimeSingleInfoSchema
 from app.modules.availability.v1.schema import AvailabilityResponseSchema
 from app.modules.doctor.v1.schema import DoctorResponseSchema
 from app.modules.patient.v1.schema import PatientResponse
 from app.modules.user.v1.schema import UserResponse
 
 
-class ChangedTimeInfo(BaseModel):
-    """Changed time information for appointment response"""
+# class ChangedTimeInfo(BaseModel):
+#     """Changed time information for appointment response"""
 
-    changed_time_id: str
-    start_time: time
-    end_time: time
-    reason: Optional[str]
-    changed_at: str
+#     changed_time_id: str
+#     start_date_time: datetime
+#     end_date_time: datetime
+#     reason: Optional[str]
+#     changed_at: str
 
-    class Config:
-        from_attributes = True
+#     class Config:
+#         from_attributes = True
 
 
 class AppointmentCreateSchema(BaseModel):
@@ -110,7 +111,7 @@ class AppointmentDetailResponseSchema(BaseModel):
     notes: Optional[str]
     status: AppointmentStatusEnum
     # booked_by_user_id: str
-    changed_times: list[ChangedTimeInfo]
+    changed_times: list[AppointmentChangedTimeSingleInfoSchema]
     created_at: datetime
     updated_at: datetime
 

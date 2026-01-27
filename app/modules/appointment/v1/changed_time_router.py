@@ -27,7 +27,7 @@ router = APIRouter(
 )
 
 
-@router.post("", summary="Create a changed time record (Doctor only)")
+@router.post("", summary="Create a changed time record")
 async def create_appointment_changed_time(
     data: AppointmentChangedTimeCreateSchema,
     db: AsyncSession = Depends(get_db),
@@ -36,13 +36,14 @@ async def create_appointment_changed_time(
 ) -> AppointmentChangedTimeSingleResponse:
     """
     Create a new changed time record for an appointment.
-    Only doctors can create changed time records.
+    Doctors, patients, and hospital admins can create changed time records.
+    Sets the appointment status to RESCHEDULED.
     """
     changed_time = await create_changed_time(
         db=db,
         appointment_id=data.appointment_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_date_time=data.start_date_time,
+        end_date_time=data.end_date_time,
         reason=data.reason,
         user_id=user.sub,
     )
@@ -139,7 +140,7 @@ async def get_appointment_changed_times(
     )
 
 
-@router.put("/{changed_time_id}", summary="Update a changed time record (Doctor only)")
+@router.put("/{changed_time_id}", summary="Update a changed time record")
 async def update_appointment_changed_time(
     changed_time_id: str,
     data: AppointmentChangedTimeUpdateSchema,
@@ -149,13 +150,13 @@ async def update_appointment_changed_time(
 ) -> AppointmentChangedTimeSingleResponse:
     """
     Update a changed time record.
-    Only doctors can update changed time records.
+    Doctors, patients, and hospital admins can update changed time records.
     """
     changed_time = await update_changed_time(
         db=db,
         changed_time_id=changed_time_id,
-        start_time=data.start_time,
-        end_time=data.end_time,
+        start_date_time=data.start_date_time,
+        end_date_time=data.end_date_time,
         reason=data.reason,
     )
 
@@ -167,9 +168,7 @@ async def update_appointment_changed_time(
     )
 
 
-@router.delete(
-    "/{changed_time_id}", summary="Delete a changed time record (Doctor only)"
-)
+@router.delete("/{changed_time_id}", summary="Delete a changed time record")
 async def delete_appointment_changed_time(
     changed_time_id: str,
     db: AsyncSession = Depends(get_db),
@@ -178,7 +177,7 @@ async def delete_appointment_changed_time(
 ) -> dict:
     """
     Delete a changed time record.
-    Only doctors can delete changed time records.
+    Doctors, patients, and hospital admins can delete changed time records.
     """
     await delete_changed_time(db, changed_time_id)
 

@@ -12,6 +12,7 @@ from app.modules.appointment.v1.models import Appointment
 from app.modules.doctor.v1.models import Doctor
 from app.modules.hospital.v1.models import Hospital
 from app.modules.patient.v1.models import Patient
+from app.modules.user.v1.models import User
 
 
 async def can_user_view_changed_time(
@@ -88,7 +89,7 @@ async def can_user_modify_changed_time(
 ) -> bool:
     """
     Check if user can create/edit/delete changed time records.
-    Only doctors can modify changed time records.
+    Doctors, patients, and hospital admins can modify changed time records.
 
     Args:
         db: Database session
@@ -96,32 +97,55 @@ async def can_user_modify_changed_time(
         user_role: Role of the user
 
     Returns:
-        True if user is a doctor, False otherwise
+        True if user is a doctor, patient, or hospital admin, False otherwise
     """
+    # Superadmin can modify
+    if user_role == RoleEnum.SUPER_ADMIN.value:
+        return True
+
     # Check if user has a doctor profile
     doctor_result = await db.execute(select(Doctor).where(Doctor.user_id == user_id))
     doctor = doctor_result.scalar_one_or_none()
-    return doctor is not None
+    if doctor:
+        return True
+
+    # Check if user has a patient profile
+    patient_result = await db.execute(select(Patient).where(Patient.user_id == user_id))
+    patient = patient_result.scalar_one_or_none()
+    if patient:
+        return True
+
+    # Check if user is a hospital admin
+    if user_role == RoleEnum.HOSPITAL_ADMIN.value:
+        hospital_result = await db.execute(
+            select(Hospital).where(Hospital.admin_id == user_id)
+        )
+        hospital = hospital_result.scalar_one_or_none()
+        if hospital:
+            return True
+
+    return False
 
 
 async def create_changed_time(
     db: AsyncSession,
     appointment_id: str,
-    start_time,
-    end_time,
+    start_date_time,
+    end_date_time,
     reason: Optional[str],
     user_id: str,
 ) -> AppointmentChangedTime:
     """
     Create a new changed time record for an appointment.
+    Sets the appointment status to RESCHEDULED.
 
     Args:
         db: Database session
         appointment_id: ID of the appointment
-        start_time: New start time
-        end_time: New end time
+        start_date_time: New start datetime
+        end_date_time: New end datetime
         reason: Reason for the change
-        user_id: ID of the user making the change (must be doctor)
+        user_id: ID of the user making the change (doctor, patient, or hospital admin)
 
     Returns:
         Created changed time record
@@ -138,13 +162,18 @@ async def create_changed_time(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
+    # Set appointment status to RESCHEDULED
+    from app.common.enums.appointment_status_enum import AppointmentStatusEnum
+
+    appointment.status = AppointmentStatusEnum.RESCHEDULED
+
     # Create changed time record
     changed_time_id = StringUtils.randomAlphaNumeric(12)
     changed_time = AppointmentChangedTime(
         changed_time_id=changed_time_id,
         appointment_id=appointment_id,
-        start_time=start_time,
-        end_time=end_time,
+        start_date_time=start_date_time,
+        end_date_time=end_date_time,
         reason=reason,
         changed_by_user_id=user_id,
     )
@@ -153,7 +182,9 @@ async def create_changed_time(
     await db.commit()
     await db.refresh(changed_time)
 
-    return changed_time
+    # Reload with changed_by relationship to avoid lazy loading issues
+    changed_time_with_relations = await get_changed_time_by_id(db, changed_time_id)
+    return changed_time_with_relations
 
 
 async def get_changed_time_by_id(
@@ -164,7 +195,8 @@ async def get_changed_time_by_id(
         select(AppointmentChangedTime)
         .options(
             selectinload(AppointmentChangedTime.appointment),
-            selectinload(AppointmentChangedTime.changed_by),
+            selectinload(AppointmentChangedTime.changed_by).selectinload(User.role),
+            selectinload(AppointmentChangedTime.changed_by).selectinload(User.files),
         )
         .where(AppointmentChangedTime.changed_time_id == changed_time_id)
     )
@@ -178,7 +210,8 @@ async def get_changed_times_for_appointment(
     result = await db.execute(
         select(AppointmentChangedTime)
         .options(
-            selectinload(AppointmentChangedTime.changed_by),
+            selectinload(AppointmentChangedTime.changed_by).selectinload(User.role),
+            selectinload(AppointmentChangedTime.changed_by).selectinload(User.files),
         )
         .where(AppointmentChangedTime.appointment_id == appointment_id)
         .order_by(AppointmentChangedTime.changed_at.desc())
@@ -189,8 +222,8 @@ async def get_changed_times_for_appointment(
 async def update_changed_time(
     db: AsyncSession,
     changed_time_id: str,
-    start_time=None,
-    end_time=None,
+    start_date_time=None,
+    end_date_time=None,
     reason: Optional[str] = None,
 ) -> AppointmentChangedTime:
     """
@@ -199,8 +232,8 @@ async def update_changed_time(
     Args:
         db: Database session
         changed_time_id: ID of the changed time record
-        start_time: Updated new start time
-        end_time: Updated new end time
+        start_date_time: Updated new start datetime
+        end_date_time: Updated new end datetime
         reason: Updated reason
 
     Returns:
@@ -214,17 +247,19 @@ async def update_changed_time(
     if not changed_time:
         raise HTTPException(status_code=404, detail="Changed time record not found")
 
-    if start_time is not None:
-        changed_time.start_time = start_time
-    if end_time is not None:
-        changed_time.end_time = end_time
+    if start_date_time is not None:
+        changed_time.start_date_time = start_date_time
+    if end_date_time is not None:
+        changed_time.end_date_time = end_date_time
     if reason is not None:
         changed_time.reason = reason
 
     await db.commit()
     await db.refresh(changed_time)
 
-    return changed_time
+    # Reload with relationships to avoid lazy loading issues
+    changed_time_with_relations = await get_changed_time_by_id(db, changed_time_id)
+    return changed_time_with_relations
 
 
 async def delete_changed_time(db: AsyncSession, changed_time_id: str) -> None:

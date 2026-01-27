@@ -1,7 +1,7 @@
-from datetime import datetime, time
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, Time
+from sqlalchemy import DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
@@ -29,12 +29,16 @@ class AppointmentChangedTime(Base, TimestampMixin):
     )
 
     # Changed time details (new time)
-    start_time: Mapped[time] = mapped_column(Time, nullable=False)
-    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    start_date_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    end_date_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
 
     reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     changed_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=datetime.utcnow
+        DateTime(timezone=True), nullable=False, default=datetime.now(timezone.utc)
     )
 
     # Foreign key to the user who made the change (doctor)
