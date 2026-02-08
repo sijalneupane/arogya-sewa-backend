@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from app.common.enums.file_type_enum import FileTypeEnum
 from app.core.security import get_current_user
 from app.db.db import get_db
@@ -15,9 +15,9 @@ router = APIRouter(
 @router.post("/upload", summary="Upload a file")
 async def upload_route(
     file: UploadFile = File(...),
+    file_type: FileTypeEnum = Form(FileTypeEnum.HOSPITAL),  # 👈 now body (form-data)
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-    file_type: FileTypeEnum = FileTypeEnum.HOSPITAL,
 ):
     """
     Upload a file and return its URL.
