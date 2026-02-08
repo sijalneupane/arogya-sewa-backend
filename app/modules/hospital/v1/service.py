@@ -1,7 +1,8 @@
-from typing import List, Optional
+from ast import Not
+from typing import List, Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,6 +13,7 @@ from app.modules.auth.v1.models import Role
 from app.modules.file.v1.models import File
 from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
+from app.modules.hospital.v1.schema import FilterHospitaList
 from app.modules.user.v1.models import User
 from app.modules.user.v1.schema import UserCreate
 from app.modules.user.v1.service import create_user
@@ -100,27 +102,51 @@ async def add_hospital(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def get_all_hospitals(db: AsyncSession) -> list[Hospital]:
+async def get_all_hospitals(
+    db: AsyncSession, filters: FilterHospitaList
+) -> Tuple[list[Hospital], int]:
     try:
-        result = await db.execute(
-            select(Hospital)
-            # 1. Join for filtering (This ensures the Hospital MUST have an admin with the specific role)
-            # .join(Hospital.admin)
-            # .join(User.role)
-            # .where(Role.role == RoleEnum.HOSPITAL_ADMIN)
-            # 2. Eager Load for the return data (Prevents N+1)
-            .options(
-                selectinload(Hospital.files),
-                # selectinload(Hospital.admin).selectinload(User.role),
-                # selectinload(Hospital.admin).selectinload(User.files),
+        # 1️⃣ Build base query
+        base_stmt = select(Hospital)
+
+        # 2️⃣ Apply filters to base query
+        if filters.name:
+            base_stmt = base_stmt.where(Hospital.name.ilike(f"%{filters.name}%"))
+
+        if filters.address:
+            base_stmt = base_stmt.where(Hospital.location.ilike(f"%{filters.address}%"))
+
+        if filters.opened_date_from:
+            base_stmt = base_stmt.where(
+                Hospital.opened_date >= filters.opened_date_from
             )
+
+        if filters.opened_date_to:
+            base_stmt = base_stmt.where(Hospital.opened_date <= filters.opened_date_to)
+
+        # 3️⃣ Get total count (before pagination)
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_result = await db.execute(count_stmt)
+        total_count = total_result.scalar_one()
+
+        # 4️⃣ Apply pagination and eager loading for final query
+        # Calculate offset explicitly to ensure it works correctly
+        offset_value = (filters.page - 1) * filters.size
+        stmt = (
+            base_stmt.options(
+                selectinload(Hospital.files),
+            )
+            .offset(offset_value)
+            .limit(filters.size)
         )
 
+        result = await db.execute(stmt)
         hospitals = result.scalars().all()
-        return list(hospitals)
+
+        return (list(hospitals), total_count)
+
     except HTTPException:
         raise
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -369,39 +395,52 @@ async def get_closest_hospital_long_lat_haversine(
     latitude: float,
     longitude: float,
     max_distance_km: float = 20,
-):
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[list[Hospital], int]:
     """Get hospitals within a certain distance from the given coordinates."""
-    # --- CHANGE: Import great_circle instead of geodesic ---
     from geopy.distance import great_circle
 
-    print("\n-------get_closest_hospital_long_lat-------\n")
     try:
-        # NOTE: This part (fetching ALL hospitals) should ideally be optimized using
-        # a spatial database index for performance.
-        hospitals = await get_all_hospitals(db)
+        # Fetch all hospitals (ideally use spatial database index for performance)
+        hospitals, _ = await get_all_hospitals(
+            db,
+            filters=FilterHospitaList(
+                address=None,
+                name=None,
+                opened_date_from=None,
+                opened_date_to=None,
+                page=1,
+                size=500,
+            ),
+        )
 
-        print("\n-------" + str(len(hospitals)) + "-------\n")
         nearby_hospitals = []
         for hosp in hospitals:
             hospital_coords = (hosp.latitude, hosp.longitude)
             user_coords = (latitude, longitude)
 
-            # --- CHANGE: Use great_circle() instead of geodesic() ---
-            # great_circle implements the Haversine formula.
+            # Use great_circle (Haversine formula)
             distance = great_circle(hospital_coords, user_coords).km
 
             if distance <= max_distance_km:
                 nearby_hospitals.append((hosp, distance))
 
-        # Sort the list by distance (closest first)
+        # Sort by distance (closest first)
         nearby_hospitals.sort(key=lambda item: item[1])
-        print("\n-------" + str(nearby_hospitals) + "-------\n")
 
-        # Return only hospitals, now perfectly ordered from closest to farthest
-        return [hosp for hosp, distance in nearby_hospitals]
+        # Get total count before pagination
+        total_count = len(nearby_hospitals)
+
+        # Apply pagination
+        offset = (page - 1) * size
+        paginated_hospitals = nearby_hospitals[offset : offset + size]
+
+        # Return only hospitals (without distance)
+        return ([hosp for hosp, distance in paginated_hospitals], total_count)
+    except HTTPException:
+        raise
     except Exception as e:
-        # In a production app, it's better to log the exception (e)
-        # and raise a more generic error for the user.
         raise HTTPException(status_code=500, detail=str(e))
 
 

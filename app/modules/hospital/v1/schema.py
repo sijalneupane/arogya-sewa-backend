@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 from app.common.enums.file_type_enum import FileTypeEnum
-from app.common.schema.pagination import PaginationMeta
+from app.common.schema.pagination import PaginationMeta, PaginationQuery
 from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
@@ -150,3 +150,16 @@ class AdminHospitalResponseSchema(BaseModel):
 class AdminHospitalDetailResponseSchema(BaseModel):
     message: str = "Hospital fetched successfully"
     data: AdminHospitalResponseSchema
+
+
+class FilterHospitaList(PaginationQuery):
+    """Filter parameters for listing hospitals"""
+
+    name: Optional[str] = Field(None, description="Search by hospital name")
+    address: Optional[str] = Field(None, description="Search by hospital address")
+    opened_date_from: Optional[date] = Field(
+        None, description="Filter hospitals opened from this date"
+    )
+    opened_date_to: Optional[date] = Field(
+        None, description="Filter hospitals opened up to this date"
+    )

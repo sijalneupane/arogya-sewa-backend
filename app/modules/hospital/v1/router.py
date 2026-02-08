@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schema import role
+from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
@@ -11,6 +12,7 @@ from app.modules.hospital.v1.schema import (
     AdminHospitalResponseSchema,
     HospitalCreateSchema,
     HospitalDetailResponseSchema,
+    FilterHospitaList,
     HospitalListResponseSchema,
     HospitalResponseSchema,
     HospitalUpdateSchema,
@@ -60,13 +62,26 @@ async def create_hospital(
 @router.get("", summary="Get all hospitals")
 async def get_hospitals(
     db: AsyncSession = Depends(get_db),
+    filters: FilterHospitaList = Depends(),
     # _=Depends(authorize),
-) -> HospitalListResponseSchema:
-    hospitals = await get_all_hospitals(db=db)
+) -> PaginatedResponse[list[HospitalResponseSchema]]:
+    hospitals, total = await get_all_hospitals(db=db, filters=filters)
     hospital_responses = [
         HospitalResponseSchema.model_validate(hospital) for hospital in hospitals
     ]
-    return HospitalListResponseSchema(data=hospital_responses)
+
+    total_pages = (total + filters.size - 1) // filters.size if total > 0 else 0
+
+    return PaginatedResponse(
+        message="Hospitals fetched successfully",
+        data=hospital_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=total_pages,
+            currentPage=filters.page,
+            pageSize=filters.size,
+            totalRecords=total,
+        ),
+    )
 
 
 @router.get("/my", summary="Get own hospital (for hospital admin)")
@@ -85,18 +100,27 @@ async def get_closest_hospitals(
     latitude: float,
     longitude: float,
     max_distance_km: float = 20,
+    page: int = 1,
+    size: int = 10,
     db: AsyncSession = Depends(get_db),
     # _=Depends(authorize),
-) -> HospitalListResponseSchema:
-    hospitals = await get_closest_hospital_long_lat_haversine(
-        db, latitude, longitude, max_distance_km
+) -> PaginatedResponse[list[HospitalResponseSchema]]:
+    hospitals, total = await get_closest_hospital_long_lat_haversine(
+        db, latitude, longitude, max_distance_km, page, size
     )
-    if not hospitals:
-        return HospitalListResponseSchema(data=[])
     hospital_responses = [
         HospitalResponseSchema.model_validate(hospital) for hospital in hospitals
     ]
-    return HospitalListResponseSchema(data=hospital_responses)
+
+    total_pages = (total + size - 1) // size if total > 0 else 0
+
+    return PaginatedResponse(
+        message="Nearest hospitals fetched successfully",
+        data=hospital_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=total_pages, currentPage=page, pageSize=size, totalRecords=total
+        ),
+    )
 
 
 @router.get("/{hospital_id}", summary="Get hospital by ID")
