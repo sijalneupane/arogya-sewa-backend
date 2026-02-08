@@ -38,21 +38,24 @@ async def add_hospital(
             select(File).where(File.file_id == hospital_license_id)
         )
         license_file_obj = license_file.scalar_one_or_none()
-        if not license_file_obj:
+        if not license_file_obj or license_file_obj.file_type != FileTypeEnum.LICENSE:
             raise HTTPException(
                 status_code=404, detail="Hospital license file not found"
             )
 
         logo_file = await db.execute(select(File).where(File.file_id == logo_img_id))
         logo_file_obj = logo_file.scalar_one_or_none()
-        if not logo_file_obj:
+        if not logo_file_obj or logo_file_obj.file_type != FileTypeEnum.HOSPITAL_LOGO:
             raise HTTPException(status_code=404, detail="Logo file not found")
 
         banner_file = await db.execute(
             select(File).where(File.file_id == banner_img_id)
         )
         banner_file_obj = banner_file.scalar_one_or_none()
-        if not banner_file_obj:
+        if (
+            not banner_file_obj
+            or banner_file_obj.file_type != FileTypeEnum.HOSPITAL_BANNER
+        ):
             raise HTTPException(status_code=404, detail="Banner file not found")
         # Create admin user first
         admin_user = await create_user(
@@ -326,7 +329,10 @@ async def delete_hospital(
         # Get the hospital first with files loaded
         result = await db.execute(
             select(Hospital)
-            .options(selectinload(Hospital.files))
+            .options(
+                selectinload(Hospital.files),
+                selectinload(Hospital.admin).selectinload(User.files),
+            )
             .where(Hospital.hospital_id == hospital_id)
         )
         hospital = result.scalar_one_or_none()
@@ -337,6 +343,9 @@ async def delete_hospital(
         for file in hospital.files:
             await delete_file(db, file.file_id)
 
+        if hospital.admin and hospital.admin.files:
+            file_ids_to_delete = [file.file_id for file in hospital.admin.files]
+            await delete_file(db, file_ids_to_delete)
         await db.delete(hospital.admin)
         await db.delete(hospital)
         await db.commit()

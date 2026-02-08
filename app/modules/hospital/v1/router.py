@@ -19,6 +19,7 @@ from app.modules.hospital.v1.schema import (
 )
 from app.modules.hospital.v1.service import (
     add_hospital,
+    delete_hospital,
     get_all_hospitals,
     get_closest_hospital_long_lat_haversine,
     get_closest_hospital_long_lat_vincenity,
@@ -155,7 +156,7 @@ async def update_hospital_details(
 
 
 @router.delete("/{hospital_id}", summary="Delete a hospital (Not implemented)")
-async def delete_hospital(
+async def delete_hospital_router(
     hospital_id: str,
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
@@ -163,4 +164,7 @@ async def delete_hospital(
 ):
     """Delete a hospital by its ID. (Functionality not implemented yet)"""
     # Implementation would go here
-    return {"message": "Delete hospital functionality is not implemented yet."}
+    await delete_hospital(
+        db=db, hospital_id=hospital_id, role=user.role, current_user_id=user.sub
+    )
+    return {"message": "Hospital deleted successfully"}
