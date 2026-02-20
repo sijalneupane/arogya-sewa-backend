@@ -10,6 +10,7 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.hospital.v1.schema import (
     AdminHospitalDetailResponseSchema,
     AdminHospitalResponseSchema,
+    HospitalByIdResponseSchema,
     HospitalCreateSchema,
     HospitalDetailResponseSchema,
     FilterHospitaList,
@@ -130,7 +131,7 @@ async def get_hospital(
     db: AsyncSession = Depends(get_db),
 ) -> HospitalDetailResponseSchema:
     hospital = await get_hospital_by_id(db=db, hospital_id=hospital_id)
-    response = HospitalResponseSchema.model_validate(hospital)
+    response = HospitalByIdResponseSchema.model_validate(hospital)
     return HospitalDetailResponseSchema(data=response)
 
 
@@ -149,7 +150,7 @@ async def update_hospital_details(
         role=user.role,
         **data.model_dump(exclude_unset=True),
     )
-    response = HospitalResponseSchema.model_validate(updated_hospital)
+    response = HospitalByIdResponseSchema.model_validate(updated_hospital)
     return HospitalDetailResponseSchema(
         message="Hospital updated successfully", data=response
     )

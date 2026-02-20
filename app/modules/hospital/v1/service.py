@@ -158,16 +158,16 @@ async def get_hospital_by_id(db: AsyncSession, hospital_id: str) -> Hospital:
     try:
         result = await db.execute(
             select(Hospital)
-            # .join(Hospital.admin)
-            # .join(User.role)
+            .join(Hospital.admin)
+            .join(User.role)
             .options(
                 selectinload(Hospital.files),
-                # selectinload(Hospital.admin).selectinload(User.role),
-                # selectinload(Hospital.admin).selectinload(User.files),
+                selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.admin).selectinload(User.files),
             )
             .where(
                 Hospital.hospital_id == hospital_id,
-                # Role.role == RoleEnum.HOSPITAL_ADMIN,
+                Role.role == RoleEnum.HOSPITAL_ADMIN,
             )
         )
 
@@ -217,6 +217,7 @@ async def update_hospital(
     opened_date=None,
     hospital_license_id: Optional[str] = None,
     logo_img_id: Optional[str] = None,
+    banner_img_id: Optional[str] = None,
 ) -> Hospital:
     """Update hospital details."""
     try:
@@ -225,6 +226,7 @@ async def update_hospital(
             select(Hospital)
             .options(
                 selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.admin).selectinload(User.files),
                 selectinload(Hospital.files),
             )
             .where(Hospital.hospital_id == hospital_id)
@@ -235,11 +237,14 @@ async def update_hospital(
 
         old_license_file_id: Optional[str] = None
         old_logo_file_id: Optional[str] = None
+        old_banner_file_id: Optional[str] = None
         for file in hospital.files:
             if file.file_type == FileTypeEnum.LICENSE:
                 old_license_file_id = file.file_id
             elif file.file_type == FileTypeEnum.HOSPITAL_LOGO:
                 old_logo_file_id = file.file_id
+            elif file.file_type == FileTypeEnum.HOSPITAL_BANNER:
+                old_banner_file_id = file.file_id
         # Authorization check
         if role == RoleEnum.HOSPITAL_ADMIN:
             # Hospital admin can only update their own hospital
@@ -248,7 +253,7 @@ async def update_hospital(
                     status_code=403,
                     detail="Access denied. You can only update your own hospital.",
                 )
-        else:
+        elif role != RoleEnum.SUPER_ADMIN:
             # Other roles are not allowed to update hospitals
             raise HTTPException(
                 status_code=403,
@@ -282,7 +287,19 @@ async def update_hospital(
             file_to_delete.append(old_logo_file_id) if old_logo_file_id else None
             logo_file_obj.hospital_id = hospital.hospital_id
 
-        await delete_file(db, file_to_delete)
+        # Validate and assign banner file if provided
+        if banner_img_id is not None:
+            banner_file = await db.execute(
+                select(File).where(File.file_id == banner_img_id)
+            )
+            banner_file_obj = banner_file.scalar_one_or_none()
+            if not banner_file_obj:
+                raise HTTPException(status_code=404, detail="Banner file not found")
+            # Assign file to this hospital
+            file_to_delete.append(old_banner_file_id) if old_banner_file_id else None
+            banner_file_obj.hospital_id = hospital.hospital_id
+        if file_to_delete and len(file_to_delete) > 0:
+            await delete_file(db, file_to_delete)
 
         # Update fields if provided
         if name is not None:
@@ -306,6 +323,7 @@ async def update_hospital(
             select(Hospital)
             .options(
                 selectinload(Hospital.admin).selectinload(User.role),
+                selectinload(Hospital.admin).selectinload(User.files),
                 selectinload(Hospital.files),
             )
             .where(Hospital.hospital_id == hospital_id)

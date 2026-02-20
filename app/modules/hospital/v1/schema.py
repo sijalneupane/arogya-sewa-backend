@@ -88,6 +88,10 @@ class HospitalResponseSchema(BaseModel):
         return None
 
 
+class HospitalByIdResponseSchema(HospitalResponseSchema):
+    admin: Optional[UserResponse] = None
+
+
 class HospitalListResponseSchema(BaseModel):
     message: str = "Hospitals fetched successfully"
     data: list[HospitalResponseSchema]
@@ -96,7 +100,7 @@ class HospitalListResponseSchema(BaseModel):
 
 class HospitalDetailResponseSchema(BaseModel):
     message: str = "Hospital fetched successfully"
-    data: HospitalResponseSchema
+    data: HospitalByIdResponseSchema
 
 
 class AdminHospitalResponseSchema(BaseModel):
