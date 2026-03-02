@@ -93,7 +93,8 @@ async def get_user_list(
         # Apply search filter if provided
         if filters.search:
             base_query = base_query.where(
-                User.name.ilike(f"%{filters.search}%") | User.email.ilike(f"%{filters.search}%")
+                User.name.ilike(f"%{filters.search}%")
+                | User.email.ilike(f"%{filters.search}%")
             )
 
         # Get total count
@@ -119,12 +120,7 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
         result = await db.execute(
             select(User)
             .options(selectinload(User.role), selectinload(User.files))
-            .where(
-                User.id == user_id,
-                exists()
-                .where(File.user_id == User.id)
-                .where(File.file_type == FileTypeEnum.PROFILE),
-            )
+            .where(User.id == user_id)
         )
 
         user = result.scalar_one_or_none()
