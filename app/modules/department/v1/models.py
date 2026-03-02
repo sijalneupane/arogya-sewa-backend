@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
 
@@ -29,8 +29,9 @@ class Department(Base, TimestampMixin):
     hospital: Mapped["Hospital"] = relationship(
         "Hospital", back_populates="departments"
     )
-    # doctors relationship will be mapped later
-    # doctors: Mapped[List["Doctor"]] = relationship("Doctor", back_populates="department")
+    doctors: Mapped[List["Doctor"]] = relationship(
+        "Doctor", back_populates="department"
+    )
 
     def __repr__(self) -> str:
         return f"Department(department_id={self.department_id}, name={self.name}, hospital_id={self.hospital_id})"

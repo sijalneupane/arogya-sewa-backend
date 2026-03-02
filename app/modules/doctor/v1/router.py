@@ -43,14 +43,13 @@ async def create_new_doctor(
     """Create a new doctor with user account."""
     created_doctor = await create_doctor(
         db=db,
-        specialization_department=data.specialization_department,
+        department_id=data.department_id,
         experience_years=data.experience_years,
         license_certificate=data.license_certificate_id,
         user_name=data.user.name,
         user_email=data.user.email,
         user_password=data.user.password,
         user_phone=data.user.phone_number,
-        # hospital_id=data.hospital_id,
         hospital_admin_id=user.sub,
     )
     response = DoctorResponseSchema.model_validate(created_doctor)

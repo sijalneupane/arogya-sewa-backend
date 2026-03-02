@@ -17,42 +17,44 @@ from app.modules.user.v1.service import create_user
 
 async def create_doctor(
     db: AsyncSession,
-    specialization_department: str,
+    department_id: Optional[str],
     experience_years: int,
     license_certificate: str,
     user_name: str,
     user_email: str,
     user_password: str,
     user_phone: str,
-    # hospital_id: Optional[str] = None,
     hospital_admin_id: Optional[str] = None,
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
     try:
-        # Validate hospital
-        # if hospital_id:
-        #     hospital_result = await db.execute(
-        #         select(Hospital).where(Hospital.hospital_id == hospital_id)
-        #     )
-        #     hospital = hospital_result.scalar_one_or_none()
-        #     if not hospital:
-        #         raise HTTPException(status_code=404, detail="Hospital not found")
-        # if hospital_admin_id:
         # Verify that the hospital_admin_id corresponds to the admin of the hospital
         hospital_result = await db.execute(
             select(Hospital).where(Hospital.admin_id == hospital_admin_id)
         )
-        hospital = (
-            hospital_result.scalar_one_or_none()
-        )  # Get first hospital if multiple exist
+        hospital = hospital_result.scalar_one_or_none()
 
-        # print("-------Out put here: " + str(hospital))
         if not hospital:
             raise HTTPException(
                 status_code=404,
                 detail=f"Hospital not found for the provided hospital_admin_id {hospital_admin_id}",
             )
-        # print("----Success---Out put here: " + str(hospital))
+
+        # Validate department if provided
+        if department_id:
+            from app.modules.department.v1.models import Department
+
+            dept_result = await db.execute(
+                select(Department).where(
+                    Department.department_id == department_id,
+                    Department.hospital_id == hospital.hospital_id,
+                )
+            )
+            if not dept_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=404,
+                    detail="Department not found in this hospital",
+                )
         license_file = await db.execute(
             select(File).where(File.file_id == license_certificate)
         )
@@ -74,11 +76,11 @@ async def create_doctor(
         # Create doctor record
         doctor = Doctor(
             doctor_id=StringUtils.randomAlphaNumeric(8),
-            specialization_department=specialization_department,
             experience_years=experience_years,
             license_certificate=license_file_obj,
             user_id=doctor_user.id,
             hospital_id=hospital.hospital_id if hospital else None,
+            department_id=department_id,
         )
 
         db.add(doctor)
@@ -93,6 +95,7 @@ async def create_doctor(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
+                selectinload(Doctor.department),
                 # selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor.doctor_id)
@@ -197,6 +200,7 @@ async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
+                selectinload(Doctor.department),
             )
         )
         return list(result.scalars().all())
@@ -214,6 +218,7 @@ async def get_doctor_by_id(db: AsyncSession, doctor_id: str) -> Doctor:
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital).selectinload(Hospital.files),
+                selectinload(Doctor.department),
             )
             .where(Doctor.doctor_id == doctor_id)
         )
@@ -237,6 +242,7 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital).selectinload(Hospital.files),
+                selectinload(Doctor.department),
             )
             .where(
                 Doctor.user_id == user_id,
@@ -274,6 +280,7 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
+                selectinload(Doctor.department),
             )
             .where(Doctor.hospital_id == hospital_id)
         )
@@ -305,6 +312,7 @@ async def get_doctors_of_logged_in_hospital_admin(
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
+                selectinload(Doctor.department),
             )
             .where(Doctor.hospital_id == hospital_of_admin.hospital_id)
         )
@@ -318,9 +326,9 @@ async def update_doctor(
     doctor_id: str,
     current_user_id: str,
     role: RoleEnum,
-    specialization_department: Optional[str] = None,
     experience_years: Optional[int] = None,
     license_certificate: Optional[str] = None,
+    department_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
 ) -> Doctor:
     """Update doctor details."""
@@ -333,6 +341,7 @@ async def update_doctor(
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.hospital),
                 selectinload(Doctor.license_certificate),
+                selectinload(Doctor.department),
             )
             .where(Doctor.doctor_id == doctor_id)
         )
@@ -385,10 +394,23 @@ async def update_doctor(
                     raise HTTPException(status_code=404, detail="Hospital not found")
 
         # Update fields if provided
-        if specialization_department is not None:
-            doctor.specialization_department = specialization_department
         if experience_years is not None:
             doctor.experience_years = experience_years
+        if department_id is not None:
+            from app.modules.department.v1.models import Department
+
+            dept_result = await db.execute(
+                select(Department).where(
+                    Department.department_id == department_id,
+                    Department.hospital_id == doctor.hospital_id,
+                )
+            )
+            if not dept_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=404,
+                    detail="Department not found in this doctor's hospital",
+                )
+            doctor.department_id = department_id
         if license_certificate is not None:
             license_file = await db.execute(
                 select(File).where(File.file_id == license_certificate)
@@ -412,6 +434,7 @@ async def update_doctor(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
+                selectinload(Doctor.department),
                 # selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor_id)
