@@ -1,16 +1,15 @@
-from typing import Optional
-
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.enums.role_enum import RoleEnum
+from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.user.v1.schema import (
+    FilterUserList,
     UserByIdResponse,
-    UserListResponse,
+    UserResponse,
     UserUpdate,
     UserUpdateResponse,
 )
@@ -22,18 +21,33 @@ router = APIRouter(
 )
 
 
-@router.get("", response_model=UserListResponse)
+@router.get("")
 async def list_users(
-    role: Optional[RoleEnum] = Query(None, description="Filter users by role"),
+    filters: FilterUserList = Depends(),
     db: AsyncSession = Depends(get_db),
-):
+) -> PaginatedResponse[list[UserResponse]]:
     """
-    Get list of all users.
+    Get list of all users with pagination.
 
-    Optional query parameter:
+    Optional query parameters:
     - **role**: Filter users by role (SUPER_ADMIN, HOSPITAL_ADMIN, DOCTOR, PATIENT)
+    - **name**: Search by user name
+    - **page**: Page number (default: 1)
+    - **size**: Number of items per page (default: 10, max: 500)
     """
-    return await get_user_list(db, role=role)
+    users, total = await get_user_list(db, filters=filters)
+    user_responses = [UserResponse.model_validate(user) for user in users]
+    total_pages = (total + filters.size - 1) // filters.size if total > 0 else 0
+    return PaginatedResponse(
+        message="User list fetched successfully",
+        data=user_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=total_pages,
+            currentPage=filters.page,
+            pageSize=filters.size,
+            totalRecords=total,
+        ),
+    )
 
 
 @router.get(

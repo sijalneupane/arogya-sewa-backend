@@ -1,7 +1,7 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import exists, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -12,7 +12,7 @@ from app.core.utils.string_utils import StringUtils
 from app.modules.auth.v1.models import Role
 from app.modules.file.v1.models import File
 from app.modules.user.v1.models import User
-from app.modules.user.v1.schema import UserByIdResponse, UserListResponse, UserResponse
+from app.modules.user.v1.schema import FilterUserList, UserByIdResponse, UserResponse
 
 
 async def create_user(
@@ -67,30 +67,50 @@ async def get_user_by_email(db: AsyncSession, email: str):
     return result.scalar_one_or_none()
 
 
-async def get_user_list(db: AsyncSession, role: Optional[RoleEnum] = None):
+async def get_user_list(
+    db: AsyncSession,
+    filters: FilterUserList,
+) -> Tuple[list, int]:
     """
-    Get list of users, optionally filtered by role.
+    Get list of users with filters and pagination.
 
     Args:
         db: Database session
-        role: Optional role to filter by
+        filters: FilterUserList with role, search, page, size
 
     Returns:
-        UserListResponse with list of users
+        Tuple of (list of User objects, total count)
     """
     try:
-        query = select(User).options(selectinload(User.role), selectinload(User.files))
+        base_query = select(User).options(
+            selectinload(User.role), selectinload(User.files)
+        )
 
         # Apply role filter if provided
-        if role:
-            query = query.join(Role).where(Role.role == role)
+        if filters.role:
+            base_query = base_query.join(Role).where(Role.role == filters.role)
 
-        result = await db.execute(query)
-        userresult = result.scalars().all()
-        reusltList = [UserResponse.model_validate(user) for user in userresult]
-        return UserListResponse(data=reusltList)
-    except Exception or HTTPException as e:
-        raise e
+        # Apply search filter if provided
+        if filters.search:
+            base_query = base_query.where(
+                User.name.ilike(f"%{filters.search}%") | User.email.ilike(f"%{filters.search}%")
+            )
+
+        # Get total count
+        count_stmt = select(func.count()).select_from(base_query.subquery())
+        count_result = await db.execute(count_stmt)
+        total = count_result.scalar_one()
+
+        # Apply pagination
+        paginated_query = base_query.offset(filters.offset).limit(filters.size)
+
+        result = await db.execute(paginated_query)
+        users = list(result.scalars().all())
+        return users, total
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 async def get_user_by_id(db: AsyncSession, user_id: str):

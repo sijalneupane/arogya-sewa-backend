@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field, computed_field
 
 from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.role_enum import RoleEnum
+from app.common.schema.pagination import PaginationQuery
 from app.common.schema.role import RoleNameDesResponse
 from app.modules.file.v1.schemas import FileResponseSchema
 
@@ -123,3 +124,10 @@ class UserUpdateResponse(BaseModel):
 class SignupResponse(BaseModel):
     message: str
     data: UserResponse
+
+
+class FilterUserList(PaginationQuery):
+    """Filter parameters for listing users"""
+
+    role: Optional[RoleEnum] = Field(None, description="Filter users by role")
+    search: Optional[str] = Field(None, description="Search query (name or email)")
