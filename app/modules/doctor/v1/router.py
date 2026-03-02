@@ -51,6 +51,7 @@ async def create_new_doctor(
         user_password=data.user.password,
         user_phone=data.user.phone_number,
         hospital_admin_id=user.sub,
+        bio=data.bio,
     )
     response = DoctorResponseSchema.model_validate(created_doctor)
     return DoctorPostPatchResponse(message="Doctor created successfully", data=response)

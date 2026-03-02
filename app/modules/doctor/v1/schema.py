@@ -2,6 +2,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.modules.department.v1.schema import DepartmentResponseSchema
 from app.modules.file.v1.schemas import FileResponseSchema
@@ -10,10 +11,10 @@ from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
 class DoctorCreateSchema(BaseModel):
-    specialization_department: str
     experience_years: int
     license_certificate_id: str
     department_id: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=1000)
     # hospital_id: Optional[str] = None
     user: UserCreate
 
@@ -22,6 +23,8 @@ class DoctorUpdateSchema(BaseModel):
     experience_years: Optional[int] = None
     license_certificate_id: Optional[str] = None
     department_id: Optional[str] = None
+    status: Optional[DoctorStatusEnum] = None
+    bio: Optional[str] = Field(None, max_length=1000)
     # hospital_id: Optional[str] = None
 
 
@@ -36,6 +39,8 @@ class DoctorResponseSchema(BaseModel):
 
     doctor_id: str
     experience_years: int
+    status: DoctorStatusEnum
+    bio: Optional[str] = None
     license_certificate: Optional[FileResponseSchema] = None
     hospital_id: Optional[str] = None
     department: Optional[DepartmentResponseSchema] = None
@@ -57,6 +62,8 @@ class DoctorWithHospitalResponseSchema(BaseModel):
 
     doctor_id: str
     experience_years: int
+    status: DoctorStatusEnum
+    bio: Optional[str] = None
     license_certificate: Optional[FileResponseSchema] = None
     department: Optional[DepartmentResponseSchema] = None
     user: UserResponse

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.doctor.v1.models import Doctor
@@ -25,6 +26,7 @@ async def create_doctor(
     user_password: str,
     user_phone: str,
     hospital_admin_id: Optional[str] = None,
+    bio: Optional[str] = None,
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
     try:
@@ -81,6 +83,7 @@ async def create_doctor(
             user_id=doctor_user.id,
             hospital_id=hospital.hospital_id if hospital else None,
             department_id=department_id,
+            bio=bio,
         )
 
         db.add(doctor)
@@ -330,6 +333,8 @@ async def update_doctor(
     license_certificate: Optional[str] = None,
     department_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
+    status: Optional[DoctorStatusEnum] = None,
+    bio: Optional[str] = None,
 ) -> Doctor:
     """Update doctor details."""
     try:
@@ -423,6 +428,10 @@ async def update_doctor(
             doctor.license_certificate = license_file_obj
         if hospital_id is not None:
             doctor.hospital_id = hospital_id if hospital_id else None
+        if status is not None:
+            doctor.status = status
+        if bio is not None:
+            doctor.bio = bio
 
         await db.commit()
         await db.refresh(doctor)

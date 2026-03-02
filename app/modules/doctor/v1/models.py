@@ -1,8 +1,9 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import ForeignKey, Integer, String
+from sqlalchemy import Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
@@ -19,7 +20,12 @@ class Doctor(Base, TimestampMixin):
 
     doctor_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
     experience_years: Mapped[int] = mapped_column(Integer, nullable=False)
-    status: Mapped[str] = mapped_column(String(50), nullable=False, default="active")
+    status: Mapped[DoctorStatusEnum] = mapped_column(
+        Enum(DoctorStatusEnum, values_callable=lambda x: [e.value for e in x]),
+        nullable=False,
+        default=DoctorStatusEnum.ACTIVE,
+    )
+    bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     booking_fee: Mapped[float] = mapped_column(nullable=False, default=0.0)
     license_certificate_id: Mapped[str] = mapped_column(
         String(100),
