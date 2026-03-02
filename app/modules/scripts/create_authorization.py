@@ -10,6 +10,9 @@ from app.modules.auth.v1.models import Authorization, Role
 
 # Import all models to ensure they're registered with SQLAlchemy before running
 from app.modules.doctor.v1.models import Doctor  # Import Doctor model
+from app.modules.appointment.v1.models import Appointment
+from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
+from app.modules.department.v1.models import Department
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
@@ -105,6 +108,11 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
             role,
             "/api/v1/appointment-changed-times/appointment/{appointment_id}",
             readOnlyMethods,
+        ),
+        # Hospital admin can create and manage departments in their hospital
+        setAuthorizationPermissions(role, "/api/v1/departments", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/departments/{department_id}", writeMethods
         ),
     ]
 

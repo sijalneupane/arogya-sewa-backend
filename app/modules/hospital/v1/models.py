@@ -9,6 +9,7 @@ from app.db.base import Base
 from app.modules.file.v1.models import File
 
 if TYPE_CHECKING:
+    from app.modules.department.v1.models import Department
     from app.modules.doctor.v1.models import Doctor
     from app.modules.user.v1.models import User
 
@@ -37,6 +38,9 @@ class Hospital(Base, TimestampMixin):
     )
     admin: Mapped["User"] = relationship("User", back_populates="hospital")
     doctors: Mapped[List["Doctor"]] = relationship("Doctor", back_populates="hospital")
+    departments: Mapped[List["Department"]] = relationship(
+        "Department", back_populates="hospital", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"Hospital(hospital_id={self.hospital_id}, name={self.name}, location={self.location})"
