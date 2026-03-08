@@ -51,7 +51,7 @@ async def create_new_doctor(
     created_doctor = await create_doctor(
         db=db,
         department_id=data.department_id,
-        experience_years=data.experience_years,
+        experience=data.experience,
         license_certificate=data.license_certificate_id,
         user_name=data.user.name,
         user_email=data.user.email,

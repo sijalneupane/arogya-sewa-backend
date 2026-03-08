@@ -10,7 +10,7 @@ from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
 class DoctorCreateSchema(BaseModel):
-    experience_years: int
+    experience: str = "No experience."
     license_certificate_id: str
     department_id: Optional[str] = None
     bio: Optional[str] = Field(None, max_length=1000)
@@ -19,7 +19,7 @@ class DoctorCreateSchema(BaseModel):
 
 
 class DoctorUpdateSchema(BaseModel):
-    experience_years: Optional[int] = None
+    experience: Optional[str] = None
     license_certificate_id: Optional[str] = None
     department_id: Optional[str] = None
     status: Optional[DoctorStatusEnum] = None
@@ -28,7 +28,7 @@ class DoctorUpdateSchema(BaseModel):
 
 
 class UserToDoctorUpgradeSchema(BaseModel):
-    experience_years: int = Field(..., ge=0, le=50)
+    experience: str = "No experience."
     license_certificate_id: str = Field(..., min_length=1, max_length=100)
     department_id: Optional[str] = None
 
@@ -37,7 +37,7 @@ class DoctorResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     doctor_id: str
-    experience_years: int
+    experience: str
     status: DoctorStatusEnum
     bio: Optional[str] = None
     license_certificate: Optional[FileResponseSchema] = None
@@ -60,7 +60,7 @@ class DoctorWithHospitalResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     doctor_id: str
-    experience_years: int
+    experience: str
     status: DoctorStatusEnum
     bio: Optional[str] = None
     license_certificate: Optional[FileResponseSchema] = None

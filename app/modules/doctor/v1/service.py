@@ -19,7 +19,7 @@ from app.modules.user.v1.service import create_user
 async def create_doctor(
     db: AsyncSession,
     department_id: Optional[str],
-    experience_years: int,
+    experience: str,
     license_certificate: str,
     user_name: str,
     user_email: str,
@@ -78,7 +78,7 @@ async def create_doctor(
         # Create doctor record
         doctor = Doctor(
             doctor_id=StringUtils.randomAlphaNumeric(8),
-            experience_years=experience_years,
+            experience=experience,
             license_certificate=license_file_obj,
             user_id=doctor_user.id,
             hospital_id=hospital.hospital_id if hospital else None,
@@ -396,7 +396,7 @@ async def update_doctor(
     doctor_id: str,
     current_user_id: str,
     role: RoleEnum,
-    experience_years: Optional[int] = None,
+    experience: Optional[str] = None,
     license_certificate: Optional[str] = None,
     department_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
@@ -466,8 +466,8 @@ async def update_doctor(
                     raise HTTPException(status_code=404, detail="Hospital not found")
 
         # Update fields if provided
-        if experience_years is not None:
-            doctor.experience_years = experience_years
+        if experience is not None:
+            doctor.experience = experience
         if department_id is not None:
             from app.modules.department.v1.models import Department
 

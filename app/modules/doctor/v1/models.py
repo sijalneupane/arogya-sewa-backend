@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Enum, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
@@ -19,7 +19,9 @@ class Doctor(Base, TimestampMixin):
     __tablename__ = "doctor"
 
     doctor_id: Mapped[str] = mapped_column(String(8), primary_key=True, index=True)
-    experience_years: Mapped[int] = mapped_column(Integer, nullable=False)
+    experience: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default="No experience."
+    )
     status: Mapped[DoctorStatusEnum] = mapped_column(
         Enum(DoctorStatusEnum, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
