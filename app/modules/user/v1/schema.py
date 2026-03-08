@@ -32,6 +32,9 @@ class UserCreate(BaseModel):
     name: str = Field(..., min_length=5, max_length=30)
     phone_number: str = Field(..., min_length=10, max_length=10)
     password: str = Field(..., min_length=6, max_length=30)
+    # profile_img_id: Optional[str] = Field(
+    #     None, description="ID of the profile image file for the user"
+    # )
     # role: RoleEnum
 
 
