@@ -22,6 +22,7 @@ async def create_user(
     name: str,
     phone_number: str,
     role: RoleEnum,
+    profile_img_id: Optional[str] = None,
 ) -> User:
     try:
         result = await db.execute(select(User).where(User.email == email))
@@ -42,9 +43,29 @@ async def create_user(
             password=hashed_password,
         )
 
+        file = None
+        if profile_img_id:
+            # Fetch the file with user relationship
+            file_result = await db.execute(
+                select(File)
+                .options(selectinload(File.user))
+                .where(File.file_id == profile_img_id)
+            )
+            file = file_result.scalar_one_or_none()
+            if not file:
+                raise HTTPException(status_code=400, detail="Invalid profile image ID")
+            if file.file_type != FileTypeEnum.PROFILE:
+                raise HTTPException(
+                    status_code=400, detail="File is not of type PROFILE"
+                )
+
         db.add(new_user)
         await db.flush()  # Changed from commit to flush
         await db.refresh(new_user)
+
+        if file:
+            file.user_id = new_user.id
+            await db.flush()
 
         # Load the user with the role relationship
         result = await db.execute(
