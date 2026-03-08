@@ -9,13 +9,19 @@ from app.modules.hospital.v1.schema import HospitalResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
+class DoctorUserCredentialsWithProfileImage(UserCreate):
+    profile_image_id: Optional[str] = Field(
+        None, description="ID of the profile image file for the doctor"
+    )
+
+
 class DoctorCreateSchema(BaseModel):
     experience: str = "No experience."
     license_certificate_id: str
     department_id: Optional[str] = None
     bio: Optional[str] = Field(None, max_length=1000)
     # hospital_id: Optional[str] = None
-    user: UserCreate
+    user: DoctorUserCredentialsWithProfileImage
 
 
 class DoctorUpdateSchema(BaseModel):
