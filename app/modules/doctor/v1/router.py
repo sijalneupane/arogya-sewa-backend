@@ -1,6 +1,14 @@
+import math
+from typing import List
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.schema.pagination import (
+    PaginatedResponse,
+    PaginationMeta,
+    PaginationQuery,
+)
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
@@ -8,12 +16,11 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.doctor.v1.schema import (
     DoctorCreateSchema,
     DoctorDetailResponseSchema,
-    DoctorListResponseSchema,
+    DoctorFilterSchema,
     DoctorPostPatchResponse,
     DoctorResponseSchema,
     DoctorUpdateSchema,
     DoctorWithHospitalResponseSchema,
-    UserToDoctorUpgradeSchema,
 )
 from app.modules.doctor.v1.service import (
     create_doctor,
@@ -59,15 +66,33 @@ async def create_new_doctor(
 
 @router.get("", summary="Get all doctors")
 async def get_doctors(
+    filters: DoctorFilterSchema = Depends(),
+    pagination: PaginationQuery = Depends(),
     db: AsyncSession = Depends(get_db),
     # _=Depends(authorize),
-) -> DoctorListResponseSchema:
+) -> PaginatedResponse[List[DoctorResponseSchema]]:
     """Get all doctors with their details."""
-    doctors = await get_all_doctors(db=db)
+    doctors, total = await get_all_doctors(
+        db=db,
+        name=filters.name,
+        status=filters.status,
+        department_id=filters.department_id,
+        page=pagination.page,
+        size=pagination.size,
+    )
     doctor_responses = [
         DoctorResponseSchema.model_validate(doctor) for doctor in doctors
     ]
-    return DoctorListResponseSchema(data=doctor_responses)
+    return PaginatedResponse(
+        message="Doctors fetched successfully",
+        data=doctor_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=math.ceil(total / pagination.size) if total else 0,
+            currentPage=pagination.page,
+            pageSize=pagination.size,
+            totalRecords=total,
+        ),
+    )
 
 
 # @router.post("/upgrade", summary="Upgrade current user to doctor")
@@ -105,37 +130,67 @@ async def get_own_doctor_profile(
 
 @router.get("/hospital/my", summary="Get doctors by hospital of current admin")
 async def get_hospital_admin_doctors(
+    filters: DoctorFilterSchema = Depends(),
+    pagination: PaginationQuery = Depends(),
     hospital_admin_id: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     # _=Depends(authorize),
-) -> DoctorListResponseSchema:
+) -> PaginatedResponse[List[DoctorResponseSchema]]:
     """Get all doctors for a specific hospital."""
-    doctors = await get_doctors_of_logged_in_hospital_admin(
-        db=db, hospital_admin_id=hospital_admin_id.sub
+    doctors, total = await get_doctors_of_logged_in_hospital_admin(
+        db=db,
+        hospital_admin_id=hospital_admin_id.sub,
+        name=filters.name,
+        status=filters.status,
+        department_id=filters.department_id,
+        page=pagination.page,
+        size=pagination.size,
     )
     doctor_responses = [
         DoctorResponseSchema.model_validate(doctor) for doctor in doctors
     ]
-    return DoctorListResponseSchema(
+    return PaginatedResponse(
         message=f"Doctors for hospital admin {hospital_admin_id.sub} fetched successfully",
         data=doctor_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=math.ceil(total / pagination.size) if total else 0,
+            currentPage=pagination.page,
+            pageSize=pagination.size,
+            totalRecords=total,
+        ),
     )
 
 
 @router.get("/hospital/{hospital_id}", summary="Get doctors by hospital")
 async def get_hospital_doctors(
     hospital_id: str,
+    filters: DoctorFilterSchema = Depends(),
+    pagination: PaginationQuery = Depends(),
     db: AsyncSession = Depends(get_db),
     # _=Depends(authorize),
-) -> DoctorListResponseSchema:
+) -> PaginatedResponse[List[DoctorResponseSchema]]:
     """Get all doctors for a specific hospital."""
-    doctors = await get_doctors_by_hospital(db=db, hospital_id=hospital_id)
+    doctors, total = await get_doctors_by_hospital(
+        db=db,
+        hospital_id=hospital_id,
+        name=filters.name,
+        status=filters.status,
+        department_id=filters.department_id,
+        page=pagination.page,
+        size=pagination.size,
+    )
     doctor_responses = [
         DoctorResponseSchema.model_validate(doctor) for doctor in doctors
     ]
-    return DoctorListResponseSchema(
+    return PaginatedResponse(
         message=f"Doctors for hospital {hospital_id} fetched successfully",
         data=doctor_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=math.ceil(total / pagination.size) if total else 0,
+            currentPage=pagination.page,
+            pageSize=pagination.size,
+            totalRecords=total,
+        ),
     )
 
 

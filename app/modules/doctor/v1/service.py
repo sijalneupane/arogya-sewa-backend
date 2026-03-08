@@ -1,7 +1,7 @@
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -194,11 +194,20 @@ async def create_doctor(
 #         )
 
 
-async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
-    """Get all doctors with their user and hospital details."""
+async def get_all_doctors(
+    db: AsyncSession,
+    name: Optional[str] = None,
+    status: Optional[DoctorStatusEnum] = None,
+    department_id: Optional[str] = None,
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[Doctor], int]:
+    """Get all doctors with their user and hospital details, with optional filters and pagination."""
     try:
-        result = await db.execute(
-            select(Doctor).options(
+        base_query = (
+            select(Doctor)
+            .join(Doctor.user)
+            .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
@@ -206,7 +215,20 @@ async def get_all_doctors(db: AsyncSession) -> List[Doctor]:
                 selectinload(Doctor.department),
             )
         )
-        return list(result.scalars().all())
+        if name:
+            base_query = base_query.where(User.name.ilike(f"%{name}%"))
+        if status:
+            base_query = base_query.where(Doctor.status == status)
+        if department_id:
+            base_query = base_query.where(Doctor.department_id == department_id)
+
+        count_result = await db.execute(
+            select(func.count()).select_from(base_query.subquery())
+        )
+        total = count_result.scalar_one()
+
+        result = await db.execute(base_query.offset((page - 1) * size).limit(size))
+        return list(result.scalars().all()), total
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -265,8 +287,16 @@ async def get_doctor_by_user_id(db: AsyncSession, user_id: str) -> Doctor:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Doctor]:
-    """Get all doctors for a specific hospital."""
+async def get_doctors_by_hospital(
+    db: AsyncSession,
+    hospital_id: str,
+    name: Optional[str] = None,
+    status: Optional[DoctorStatusEnum] = None,
+    department_id: Optional[str] = None,
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[Doctor], int]:
+    """Get all doctors for a specific hospital, with optional filters and pagination."""
     try:
         # Verify hospital exists
         hospital_result = await db.execute(
@@ -276,8 +306,9 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
         if not hospital:
             raise HTTPException(status_code=404, detail="Hospital not found")
 
-        result = await db.execute(
+        base_query = (
             select(Doctor)
+            .join(Doctor.user)
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
@@ -287,7 +318,20 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
             )
             .where(Doctor.hospital_id == hospital_id)
         )
-        return list(result.scalars().all())
+        if name:
+            base_query = base_query.where(User.name.ilike(f"%{name}%"))
+        if status:
+            base_query = base_query.where(Doctor.status == status)
+        if department_id:
+            base_query = base_query.where(Doctor.department_id == department_id)
+
+        count_result = await db.execute(
+            select(func.count()).select_from(base_query.subquery())
+        )
+        total = count_result.scalar_one()
+
+        result = await db.execute(base_query.offset((page - 1) * size).limit(size))
+        return list(result.scalars().all()), total
     except HTTPException:
         raise
     except Exception as e:
@@ -295,9 +339,15 @@ async def get_doctors_by_hospital(db: AsyncSession, hospital_id: str) -> List[Do
 
 
 async def get_doctors_of_logged_in_hospital_admin(
-    db: AsyncSession, hospital_admin_id: str
-) -> List[Doctor]:
-    """Get all doctors not associated with any hospital."""
+    db: AsyncSession,
+    hospital_admin_id: str,
+    name: Optional[str] = None,
+    status: Optional[DoctorStatusEnum] = None,
+    department_id: Optional[str] = None,
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[List[Doctor], int]:
+    """Get all doctors for the logged-in hospital admin's hospital, with optional filters and pagination."""
     try:
         hospital_of_admin_result = await db.execute(
             select(Hospital).where(Hospital.admin_id == hospital_admin_id)
@@ -308,8 +358,10 @@ async def get_doctors_of_logged_in_hospital_admin(
                 status_code=404,
                 detail="Hospital not found for the logged-in hospital admin",
             )
-        result = await db.execute(
+
+        base_query = (
             select(Doctor)
+            .join(Doctor.user)
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
@@ -319,7 +371,22 @@ async def get_doctors_of_logged_in_hospital_admin(
             )
             .where(Doctor.hospital_id == hospital_of_admin.hospital_id)
         )
-        return list(result.scalars().all())
+        if name:
+            base_query = base_query.where(User.name.ilike(f"%{name}%"))
+        if status:
+            base_query = base_query.where(Doctor.status == status)
+        if department_id:
+            base_query = base_query.where(Doctor.department_id == department_id)
+
+        count_result = await db.execute(
+            select(func.count()).select_from(base_query.subquery())
+        )
+        total = count_result.scalar_one()
+
+        result = await db.execute(base_query.offset((page - 1) * size).limit(size))
+        return list(result.scalars().all()), total
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

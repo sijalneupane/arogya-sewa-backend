@@ -3,7 +3,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
-from app.common.enums.role_enum import RoleEnum
 from app.modules.department.v1.schema import DepartmentResponseSchema
 from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.hospital.v1.schema import HospitalResponseSchema
@@ -70,9 +69,14 @@ class DoctorWithHospitalResponseSchema(BaseModel):
     hospital: Optional[HospitalResponseSchema] = None
 
 
-class DoctorListResponseSchema(BaseModel):
-    message: str = "Doctors fetched successfully"
-    data: list[DoctorResponseSchema]
+class DoctorFilterSchema(BaseModel):
+    name: Optional[str] = Field(
+        None, description="Search by doctor name (partial match)"
+    )
+    status: Optional[DoctorStatusEnum] = Field(
+        None, description="Filter by doctor status"
+    )
+    department_id: Optional[str] = Field(None, description="Filter by department ID")
 
 
 class DoctorDetailResponseSchema(BaseModel):
