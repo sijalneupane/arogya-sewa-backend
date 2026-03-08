@@ -18,6 +18,7 @@ from app.modules.department.v1.service import (
     delete_department,
     get_department_by_id,
     get_departments_by_hospital,
+    get_departments_for_admin,
     update_department,
 )
 
@@ -69,6 +70,29 @@ async def list_departments_for_hospital(
         DepartmentResponseSchema.model_validate(d) for d in departments
     ]
     return DepartmentListResponseSchema(data=department_responses)
+
+
+@router.get(
+    "/my",
+    summary="Get departments of the logged-in hospital admin's hospital",
+)
+async def list_my_hospital_departments(
+    filters: DepartmentFilterQuery = Depends(),
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+) -> DepartmentListResponseSchema:
+    """Return all departments for the hospital managed by the currently logged-in hospital admin."""
+    departments = await get_departments_for_admin(
+        db=db, admin_id=user.sub, filters=filters
+    )
+    department_responses = [
+        DepartmentResponseSchema.model_validate(d) for d in departments
+    ]
+    return DepartmentListResponseSchema(
+        message="Departments for your hospital fetched successfully",
+        data=department_responses,
+    )
 
 
 @router.get("/{department_id}", summary="Get a department by ID (public)")

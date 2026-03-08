@@ -111,6 +111,7 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         ),
         # Hospital admin can create and manage departments in their hospital
         setAuthorizationPermissions(role, "/api/v1/departments", postMethod),
+        setAuthorizationPermissions(role, "/api/v1/departments/my", readOnlyMethods),
         setAuthorizationPermissions(
             role, "/api/v1/departments/{department_id}", writeMethods
         ),

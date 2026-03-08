@@ -109,6 +109,18 @@ async def get_departments_by_hospital(
     return list(result.scalars().all())
 
 
+async def get_departments_for_admin(
+    db: AsyncSession,
+    admin_id: str,
+    filters: DepartmentFilterQuery,
+) -> List[Department]:
+    """Get all departments belonging to the logged-in hospital admin's hospital."""
+    hospital = await _get_hospital_for_admin(db, admin_id)
+    return await get_departments_by_hospital(
+        db=db, hospital_id=hospital.hospital_id, filters=filters
+    )
+
+
 async def get_department_by_id(db: AsyncSession, department_id: str) -> Department:
     """Get a single department by its ID."""
     result = await db.execute(
