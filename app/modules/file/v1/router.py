@@ -3,7 +3,7 @@ from app.common.enums.file_type_enum import FileTypeEnum
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
-from app.modules.file.v1.service import save_file, update_file
+from app.modules.file.v1.service import delete_file, save_file, update_file
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
@@ -40,3 +40,16 @@ async def update_route(
     """
     updated_file = await update_file(db=db, file=file, file_id=file_id)
     return updated_file
+
+
+@router.delete("/delete/{file_id}", summary="Delete a file")
+async def delete_route(
+    file_id: str,
+    current_user: JwtPayload = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Delete a file.
+    """
+    await delete_file(db=db, file_ids=file_id)
+    return {"detail": "File deleted successfully"}
