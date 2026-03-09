@@ -216,12 +216,15 @@ async def update_doctor_details(
     # _=Depends(authorize),
 ) -> DoctorPostPatchResponse:
     """Update doctor details."""
+    doctor_data = data.model_dump(exclude_unset=True, exclude={"user"})
+    # user_data = data.user.model_dump(exclude_unset=True) if data.user else None
     updated_doctor = await update_doctor(
         db=db,
         doctor_id=doctor_id,
         current_user_id=user.sub,
         role=user.role,
-        **data.model_dump(exclude_unset=True),
+        user=data.user,
+        **doctor_data,
     )
     response = DoctorResponseSchema.model_validate(updated_doctor)
     return DoctorPostPatchResponse(message="Doctor updated successfully", data=response)

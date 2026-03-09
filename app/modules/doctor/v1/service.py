@@ -9,6 +9,7 @@ from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.doctor.v1.models import Doctor
+from app.modules.doctor.v1.schema import DoctorUserUpdateSchema
 from app.modules.file.v1.models import File
 from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
@@ -401,11 +402,12 @@ async def update_doctor(
     current_user_id: str,
     role: RoleEnum,
     experience: Optional[str] = None,
-    license_certificate: Optional[str] = None,
+    license_certificate_id: Optional[str] = None,
     department_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
     status: Optional[DoctorStatusEnum] = None,
     bio: Optional[str] = None,
+    user: Optional[DoctorUserUpdateSchema] = None,
 ) -> Doctor:
     """Update doctor details."""
     try:
@@ -487,9 +489,9 @@ async def update_doctor(
                     detail="Department not found in this doctor's hospital",
                 )
             doctor.department_id = department_id
-        if license_certificate is not None:
+        if license_certificate_id is not None:
             license_file = await db.execute(
-                select(File).where(File.file_id == license_certificate)
+                select(File).where(File.file_id == license_certificate_id)
             )
             license_file_obj = license_file.scalar_one_or_none()
             if not license_file_obj:
@@ -503,6 +505,51 @@ async def update_doctor(
             doctor.status = status
         if bio is not None:
             doctor.bio = bio
+
+        # Update user fields if provided
+        if user:
+            from app.core.security import pwd_context
+
+            if user.name is not None:
+                doctor.user.name = user.name
+            if user.email is not None:
+                new_email = user.email
+                if new_email != doctor.user.email:
+                    email_check = await db.execute(
+                        select(User).where(User.email == new_email)
+                    )
+                    if email_check.scalar_one_or_none():
+                        raise HTTPException(
+                            status_code=400, detail="Email is already registered"
+                        )
+                    doctor.user.email = new_email
+            if user.phone_number is not None:
+                doctor.user.phone_number = user.phone_number
+            if user.password is not None:
+                doctor.user.password = pwd_context.hash(user.password)
+            if user.profile_image_id is not None:
+                file_result = await db.execute(
+                    select(File)
+                    .options(selectinload(File.user))
+                    .where(File.file_id == user.profile_image_id)
+                )
+                profile_file = file_result.scalar_one_or_none()
+                if not profile_file:
+                    raise HTTPException(
+                        status_code=400, detail="Invalid profile image ID"
+                    )
+                from app.common.enums.file_type_enum import FileTypeEnum
+
+                if profile_file.file_type not in (
+                    FileTypeEnum.OTHER,
+                    FileTypeEnum.PROFILE,
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="File must be of type OTHER or PROFILE for profile image",
+                    )
+                profile_file.user_id = doctor.user.id
+                profile_file.file_type = FileTypeEnum.PROFILE
 
         await db.commit()
         await db.refresh(doctor)

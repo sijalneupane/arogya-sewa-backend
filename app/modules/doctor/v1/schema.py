@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.modules.department.v1.schema import DepartmentResponseSchema
@@ -24,12 +24,21 @@ class DoctorCreateSchema(BaseModel):
     user: DoctorUserCredentialsWithProfileImage
 
 
+class DoctorUserUpdateSchema(BaseModel):
+    name: Optional[str] = Field(None, min_length=5, max_length=30)
+    email: Optional[EmailStr] = None
+    phone_number: Optional[str] = Field(None, min_length=10, max_length=10)
+    password: Optional[str] = Field(None, min_length=6, max_length=30)
+    profile_image_id: Optional[str] = None
+
+
 class DoctorUpdateSchema(BaseModel):
     experience: Optional[str] = None
     license_certificate_id: Optional[str] = None
     department_id: Optional[str] = None
     status: Optional[DoctorStatusEnum] = None
     bio: Optional[str] = Field(None, max_length=1000)
+    user: Optional[DoctorUserUpdateSchema] = None
     # hospital_id: Optional[str] = None
 
 
