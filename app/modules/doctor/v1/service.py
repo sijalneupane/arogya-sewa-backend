@@ -31,77 +31,80 @@ async def create_doctor(
 ) -> Doctor:
     """Create a new doctor with an associated user account."""
     try:
-        # Verify that the hospital_admin_id corresponds to the admin of the hospital
-        hospital_result = await db.execute(
-            select(Hospital).where(Hospital.admin_id == hospital_admin_id)
-        )
-        hospital = hospital_result.scalar_one_or_none()
-
-        if not hospital:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Hospital not found for the provided hospital_admin_id {hospital_admin_id}",
+        async with db.begin_nested():
+            # Verify that the hospital_admin_id corresponds to the admin of the hospital
+            hospital_result = await db.execute(
+                select(Hospital).where(Hospital.admin_id == hospital_admin_id)
             )
+            hospital = hospital_result.scalar_one_or_none()
 
-        # Validate department if provided
-        if department_id:
-            from app.modules.department.v1.models import Department
-
-            dept_result = await db.execute(
-                select(Department).where(
-                    Department.department_id == department_id,
-                    Department.hospital_id == hospital.hospital_id,
-                )
-            )
-            if not dept_result.scalar_one_or_none():
+            if not hospital:
                 raise HTTPException(
                     status_code=404,
-                    detail="Department not found in this hospital",
+                    detail=f"Hospital not found for the provided hospital_admin_id {hospital_admin_id}",
                 )
-        license_file = await db.execute(
-            select(File).where(File.file_id == license_certificate)
-        )
-        license_file_obj = license_file.scalar_one_or_none()
-        if not license_file_obj:
-            raise HTTPException(
-                status_code=404, detail="License certificate file not found"
+
+            # Validate department if provided
+            if department_id:
+                from app.modules.department.v1.models import Department
+
+                dept_result = await db.execute(
+                    select(Department).where(
+                        Department.department_id == department_id,
+                        Department.hospital_id == hospital.hospital_id,
+                    )
+                )
+                if not dept_result.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Department not found in this hospital",
+                    )
+
+            license_file = await db.execute(
+                select(File).where(File.file_id == license_certificate)
+            )
+            license_file_obj = license_file.scalar_one_or_none()
+            if not license_file_obj:
+                raise HTTPException(
+                    status_code=404, detail="License certificate file not found"
+                )
+
+            # Create user account for the doctor (has its own nested savepoint)
+            doctor_user = await create_user(
+                db=db,
+                name=user_name,
+                email=user_email,
+                password=user_password,
+                phone_number=user_phone,
+                role=RoleEnum.DOCTOR,
+                profile_img_id=profile_img_id,
             )
 
-        # Create user account for the doctor
-        doctor_user = await create_user(
-            db=db,
-            name=user_name,
-            email=user_email,
-            password=user_password,
-            phone_number=user_phone,
-            role=RoleEnum.DOCTOR,
-            profile_img_id=profile_img_id,
-        )
-        # Create doctor record
-        doctor = Doctor(
-            doctor_id=StringUtils.randomAlphaNumeric(8),
-            experience=experience,
-            license_certificate=license_file_obj,
-            user_id=doctor_user.id,
-            hospital_id=hospital.hospital_id if hospital else None,
-            department_id=department_id,
-            bio=bio,
-        )
+            # Create doctor record
+            doctor = Doctor(
+                doctor_id=StringUtils.randomAlphaNumeric(8),
+                experience=experience,
+                license_certificate=license_file_obj,
+                user_id=doctor_user.id,
+                hospital_id=hospital.hospital_id if hospital else None,
+                department_id=department_id,
+                bio=bio,
+            )
+            db.add(doctor)
+            await db.flush()
 
-        db.add(doctor)
+        # Savepoint released — commit the full transaction atomically
         await db.commit()
-        await db.refresh(doctor)
+
         # Return doctor with relationships loaded
         result = await db.execute(
             select(Doctor)
             .join(Doctor.user)
-            # .join(Doctor.license_certificate)
             .options(
                 selectinload(Doctor.license_certificate),
                 selectinload(Doctor.user).selectinload(User.role),
                 selectinload(Doctor.user).selectinload(User.files),
                 selectinload(Doctor.department),
-                # selectinload(Doctor.hospital),
             )
             .where(Doctor.doctor_id == doctor.doctor_id)
         )
@@ -112,7 +115,6 @@ async def create_doctor(
         raise
     except Exception:
         await db.rollback()
-        # raise HTTPException(status_code=500, detail=str(e))
         raise
 
 

@@ -53,3 +53,19 @@ async def delete_route(
     """
     await delete_file(db=db, file_ids=file_id)
     return {"detail": "File deleted successfully"}
+
+
+# @router.post("/upload/profile", summary="Upload a profile file")
+# async def upload_profile_route(
+#     file: UploadFile = File(...),
+#     file_type: FileTypeEnum = Form(FileTypeEnum.HOSPITAL),  # 👈 now body (form-data)
+#     current_user: JwtPayload = Depends(get_current_user),
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     """
+#     Upload a file and return its URL.
+#     """
+#     file_info = await save_file(
+#         db=db, file=file, uploaded_by=current_user.sub, file_type=file_type
+#     )
+#     return file_info

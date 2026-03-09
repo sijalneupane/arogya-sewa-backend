@@ -25,49 +25,54 @@ async def create_user(
     profile_img_id: Optional[str] = None,
 ) -> User:
     try:
-        result = await db.execute(select(User).where(User.email == email))
-        user = result.scalar_one_or_none()
+        async with db.begin_nested():
+            result = await db.execute(select(User).where(User.email == email))
+            user = result.scalar_one_or_none()
 
-        if user:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            if user:
+                raise HTTPException(status_code=400, detail="Email already registered")
 
-        relatedRole = await db.execute(select(Role).where(Role.role == role))
-        hashed_password = pwd_context.hash(password)
-        id = StringUtils.randomAlphaNumeric(8)
-        new_user = User(
-            id=id,
-            name=name,
-            email=email,
-            phone_number=phone_number,
-            role=relatedRole.scalar_one(),
-            password=hashed_password,
-        )
-
-        file = None
-        if profile_img_id:
-            # Fetch the file with user relationship
-            file_result = await db.execute(
-                select(File)
-                .options(selectinload(File.user))
-                .where(File.file_id == profile_img_id)
+            relatedRole = await db.execute(select(Role).where(Role.role == role))
+            hashed_password = pwd_context.hash(password)
+            id = StringUtils.randomAlphaNumeric(8)
+            new_user = User(
+                id=id,
+                name=name,
+                email=email,
+                phone_number=phone_number,
+                role=relatedRole.scalar_one(),
+                password=hashed_password,
             )
-            file = file_result.scalar_one_or_none()
-            if not file:
-                raise HTTPException(status_code=400, detail="Invalid profile image ID")
-            if file.file_type != FileTypeEnum.PROFILE:
-                raise HTTPException(
-                    status_code=400, detail="File is not of type PROFILE"
+
+            file = None
+            if profile_img_id:
+                # Fetch the file with user relationship
+                file_result = await db.execute(
+                    select(File)
+                    .options(selectinload(File.user))
+                    .where(File.file_id == profile_img_id)
                 )
+                file = file_result.scalar_one_or_none()
+                if not file:
+                    raise HTTPException(
+                        status_code=400, detail="Invalid profile image ID"
+                    )
+                if file.file_type != FileTypeEnum.OTHER:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="File should be OTHER for initial profile image",
+                    )
 
-        db.add(new_user)
-        await db.flush()  # Changed from commit to flush
-        await db.refresh(new_user)
-
-        if file:
-            file.user_id = new_user.id
+            db.add(new_user)
             await db.flush()
+            await db.refresh(new_user)
 
-        # Load the user with the role relationship
+            if file:
+                file.user_id = new_user.id
+                file.file_type = FileTypeEnum.PROFILE
+                await db.flush()
+
+        # Load the user with the role relationship (savepoint released, still within outer transaction)
         result = await db.execute(
             select(User)
             .options(selectinload(User.role), selectinload(User.files))

@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums.file_meta_type_enum import FileMetaTypeEnum
 from app.common.enums.file_type_enum import FileTypeEnum
+from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.cloudinary.service import (
     delete_file_cloudinary,
