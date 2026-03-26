@@ -27,3 +27,16 @@ async def send_multicast_push(
     )
 
     return await messaging.send_each_for_multicast_async(message)
+
+
+def send_topic_push(topic: str, title: str, body: str, data: dict | None = None):
+    message = messaging.Message(
+        topic=topic,
+        notification=messaging.Notification(
+            title=title,
+            body=body,
+        ),
+        data=data or {},
+    )
+
+    return messaging.send(message)

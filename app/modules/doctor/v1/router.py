@@ -57,6 +57,7 @@ async def create_new_doctor(
         user_email=data.user.email,
         user_password=data.user.password,
         user_phone=data.user.phone_number,
+        status=data.status,
         hospital_admin_id=user.sub,
         bio=data.bio,
         profile_img_id=data.user.profile_image_id,

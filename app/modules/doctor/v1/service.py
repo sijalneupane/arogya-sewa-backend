@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 from fastapi import HTTPException
 from sqlalchemy import func, select
@@ -26,6 +26,7 @@ async def create_doctor(
     user_email: str,
     user_password: str,
     user_phone: str,
+    status: DoctorStatusEnum,
     hospital_admin_id: Optional[str] = None,
     bio: Optional[str] = None,
     profile_img_id: Optional[str] = None,
@@ -90,6 +91,7 @@ async def create_doctor(
                 hospital_id=hospital.hospital_id if hospital else None,
                 department_id=department_id,
                 bio=bio,
+                status=status,
             )
             db.add(doctor)
             await db.flush()
