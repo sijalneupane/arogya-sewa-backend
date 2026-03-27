@@ -1,0 +1,869 @@
+{
+    "project": "Arogya Sewa - SQLAlchemy ORM Schema Outline",
+    "source": {
+        "base": "app/db/base.py",
+        "timestamp_mixin": "app/common/models/model_mixins/timestamp_mixin.py",
+        "models": [
+            "app/modules/auth/v1/models.py",
+            "app/modules/user/v1/models.py",
+            "app/modules/hospital/v1/models.py",
+            "app/modules/department/v1/models.py",
+            "app/modules/file/v1/models.py",
+            "app/modules/doctor/v1/models.py",
+            "app/modules/patient/v1/models.py",
+            "app/modules/availability/v1/models.py",
+            "app/modules/appointment/v1/models.py",
+            "app/modules/appointment/v1/changed_time_models.py"
+        ]
+    },
+    "shared_fields": {
+        "TimestampMixin": [
+            {
+                "name": "created_at",
+                "type": "DateTime(timezone=True)",
+                "nullable": false,
+                "server_default": "func.now()"
+            },
+            {
+                "name": "updated_at",
+                "type": "DateTime(timezone=True)",
+                "nullable": false,
+                "server_default": "func.now()",
+                "onupdate": "func.now()"
+            }
+        ]
+    },
+    "enums": {
+        "RoleEnum": [
+            "SUPER_ADMIN",
+            "HOSPITAL_ADMIN",
+            "DOCTOR",
+            "PATIENT"
+        ],
+        "FileMetaTypeEnum": [
+            "image",
+            "video",
+            "pdf"
+        ],
+        "FileTypeEnum": [
+            "profile",
+            "license",
+            "hospital_logo",
+            "hospital",
+            "hospital_banner",
+            "medical_report",
+            "prescription",
+            "other"
+        ],
+        "DoctorStatusEnum": [
+            "Active",
+            "On Leave",
+            "On Appointment",
+            "Inactive"
+        ],
+        "AppointmentStatusEnum": [
+            "scheduled",
+            "confirmed",
+            "inprogress",
+            "completed",
+            "cancelled",
+            "rescheduled"
+        ]
+    },
+    "models": {
+        "Role": {
+            "table": "role",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "role",
+                    "type": "Enum(RoleEnum, name=role_enum)",
+                    "nullable": false
+                },
+                {
+                    "name": "description",
+                    "type": "String",
+                    "nullable": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "users",
+                    "target": "User",
+                    "kind": "one-to-many",
+                    "back_populates": "role",
+                    "cascade": "all, delete"
+                },
+                {
+                    "name": "authorization",
+                    "target": "Authorization",
+                    "kind": "one-to-many",
+                    "back_populates": "role",
+                    "cascade": "all, delete"
+                }
+            ]
+        },
+        "Authorization": {
+            "table": "authorization",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "role_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "role.id"
+                },
+                {
+                    "name": "path",
+                    "type": "String",
+                    "nullable": false
+                },
+                {
+                    "name": "methods",
+                    "type": "JSONB",
+                    "nullable": false,
+                    "element_type": "List[str]"
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "role",
+                    "target": "Role",
+                    "kind": "many-to-one",
+                    "back_populates": "authorization"
+                }
+            ]
+        },
+        "User": {
+            "table": "user",
+            "fields": [
+                {
+                    "name": "id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "name",
+                    "type": "String(50)",
+                    "nullable": false
+                },
+                {
+                    "name": "email",
+                    "type": "String(100)",
+                    "nullable": false,
+                    "unique": true,
+                    "index": true
+                },
+                {
+                    "name": "phone_number",
+                    "type": "String(20)",
+                    "nullable": false
+                },
+                {
+                    "name": "password",
+                    "type": "VARCHAR(255)",
+                    "nullable": false
+                },
+                {
+                    "name": "last_login",
+                    "type": "DateTime",
+                    "nullable": true
+                },
+                {
+                    "name": "is_active",
+                    "type": "Boolean (inferred from Mapped[bool])",
+                    "nullable": false,
+                    "default": true
+                },
+                {
+                    "name": "role_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "role.id"
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "role",
+                    "target": "Role",
+                    "kind": "many-to-one",
+                    "back_populates": "users"
+                },
+                {
+                    "name": "files",
+                    "target": "File",
+                    "kind": "one-to-many",
+                    "back_populates": "user"
+                },
+                {
+                    "name": "hospital",
+                    "target": "Hospital",
+                    "kind": "one-to-one",
+                    "back_populates": "admin",
+                    "uselist": false
+                },
+                {
+                    "name": "doctor",
+                    "target": "Doctor",
+                    "kind": "one-to-one",
+                    "back_populates": "user",
+                    "uselist": false
+                },
+                {
+                    "name": "patient",
+                    "target": "Patient",
+                    "kind": "one-to-one",
+                    "back_populates": "user",
+                    "uselist": false
+                }
+            ],
+            "derived_properties": [
+                {
+                    "name": "profile_image",
+                    "source_relationship": "files",
+                    "filter": "file_type == FileTypeEnum.PROFILE"
+                }
+            ]
+        },
+        "Hospital": {
+            "table": "hospital",
+            "fields": [
+                {
+                    "name": "hospital_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "name",
+                    "type": "String(100)",
+                    "nullable": false
+                },
+                {
+                    "name": "location",
+                    "type": "String(200)",
+                    "nullable": false
+                },
+                {
+                    "name": "latitude",
+                    "type": "Float",
+                    "nullable": false
+                },
+                {
+                    "name": "longitude",
+                    "type": "Float",
+                    "nullable": false
+                },
+                {
+                    "name": "contact_number",
+                    "type": "ARRAY(String(15))",
+                    "nullable": false,
+                    "default": "list"
+                },
+                {
+                    "name": "opened_date",
+                    "type": "Date",
+                    "nullable": true
+                },
+                {
+                    "name": "admin_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id",
+                    "unique": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "files",
+                    "target": "File",
+                    "kind": "one-to-many",
+                    "back_populates": "hospital",
+                    "cascade": "all, delete-orphan"
+                },
+                {
+                    "name": "admin",
+                    "target": "User",
+                    "kind": "one-to-one",
+                    "back_populates": "hospital"
+                },
+                {
+                    "name": "doctors",
+                    "target": "Doctor",
+                    "kind": "one-to-many",
+                    "back_populates": "hospital"
+                },
+                {
+                    "name": "departments",
+                    "target": "Department",
+                    "kind": "one-to-many",
+                    "back_populates": "hospital",
+                    "cascade": "all, delete-orphan"
+                }
+            ]
+        },
+        "Department": {
+            "table": "department",
+            "fields": [
+                {
+                    "name": "department_id",
+                    "type": "String(10)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "name",
+                    "type": "String(150)",
+                    "nullable": false
+                },
+                {
+                    "name": "description",
+                    "type": "Text",
+                    "nullable": false
+                },
+                {
+                    "name": "is_active",
+                    "type": "Boolean",
+                    "nullable": false,
+                    "default": true
+                },
+                {
+                    "name": "hospital_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "hospital.hospital_id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "hospital",
+                    "target": "Hospital",
+                    "kind": "many-to-one",
+                    "back_populates": "departments"
+                },
+                {
+                    "name": "doctors",
+                    "target": "Doctor",
+                    "kind": "one-to-many",
+                    "back_populates": "department"
+                }
+            ]
+        },
+        "File": {
+            "table": "file",
+            "fields": [
+                {
+                    "name": "file_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "public_id",
+                    "type": "String",
+                    "nullable": false,
+                    "unique": true
+                },
+                {
+                    "name": "file_url",
+                    "type": "String",
+                    "nullable": false
+                },
+                {
+                    "name": "meta_type",
+                    "type": "Enum(FileMetaTypeEnum, name=file_meta_type_enum)",
+                    "nullable": false
+                },
+                {
+                    "name": "file_type",
+                    "type": "Enum(FileTypeEnum, name=file_type_enum)",
+                    "nullable": false
+                },
+                {
+                    "name": "hospital_id",
+                    "type": "String(8)",
+                    "nullable": true,
+                    "foreign_key": "hospital.hospital_id"
+                },
+                {
+                    "name": "user_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id"
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "doctor_license",
+                    "target": "Doctor",
+                    "kind": "one-to-one",
+                    "back_populates": "license_certificate",
+                    "uselist": false
+                },
+                {
+                    "name": "hospital",
+                    "target": "Hospital",
+                    "kind": "many-to-one",
+                    "back_populates": "files"
+                },
+                {
+                    "name": "user",
+                    "target": "User",
+                    "kind": "many-to-one",
+                    "back_populates": "files"
+                }
+            ]
+        },
+        "Doctor": {
+            "table": "doctor",
+            "fields": [
+                {
+                    "name": "doctor_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "experience",
+                    "type": "String(255)",
+                    "nullable": false,
+                    "server_default": "No experience."
+                },
+                {
+                    "name": "status",
+                    "type": "Enum(DoctorStatusEnum, values_callable=[e.value for e in enum])",
+                    "nullable": false,
+                    "default": "DoctorStatusEnum.ACTIVE"
+                },
+                {
+                    "name": "bio",
+                    "type": "Text",
+                    "nullable": true
+                },
+                {
+                    "name": "booking_fee",
+                    "type": "Float (inferred from Mapped[float])",
+                    "nullable": false,
+                    "default": 0.0
+                },
+                {
+                    "name": "license_certificate_id",
+                    "type": "String(100)",
+                    "nullable": true,
+                    "foreign_key": "file.file_id",
+                    "unique": true
+                },
+                {
+                    "name": "user_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id",
+                    "unique": true
+                },
+                {
+                    "name": "hospital_id",
+                    "type": "String(8)",
+                    "nullable": true,
+                    "foreign_key": "hospital.hospital_id"
+                },
+                {
+                    "name": "department_id",
+                    "type": "String(10)",
+                    "nullable": true,
+                    "foreign_key": "department.department_id",
+                    "ondelete": "SET NULL"
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "license_certificate",
+                    "target": "File",
+                    "kind": "one-to-one",
+                    "back_populates": "doctor_license",
+                    "uselist": false
+                },
+                {
+                    "name": "user",
+                    "target": "User",
+                    "kind": "one-to-one",
+                    "back_populates": "doctor"
+                },
+                {
+                    "name": "hospital",
+                    "target": "Hospital",
+                    "kind": "many-to-one",
+                    "back_populates": "doctors"
+                },
+                {
+                    "name": "department",
+                    "target": "Department",
+                    "kind": "many-to-one",
+                    "back_populates": "doctors"
+                },
+                {
+                    "name": "availabilities",
+                    "target": "Availability",
+                    "kind": "one-to-many",
+                    "back_populates": "doctor",
+                    "cascade": "all, delete-orphan"
+                }
+            ]
+        },
+        "Patient": {
+            "table": "patient",
+            "fields": [
+                {
+                    "name": "patient_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "dob",
+                    "type": "Date",
+                    "nullable": false
+                },
+                {
+                    "name": "gender",
+                    "type": "String(10)",
+                    "nullable": false
+                },
+                {
+                    "name": "blood_group",
+                    "type": "String(5)",
+                    "nullable": false
+                },
+                {
+                    "name": "user_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id",
+                    "unique": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "user",
+                    "target": "User",
+                    "kind": "one-to-one",
+                    "back_populates": "patient"
+                }
+            ]
+        },
+        "Availability": {
+            "table": "availability",
+            "fields": [
+                {
+                    "name": "availability_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "doctor_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "doctor.doctor_id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "start_date_time",
+                    "type": "DateTime(timezone=True)",
+                    "nullable": false
+                },
+                {
+                    "name": "end_date_time",
+                    "type": "DateTime(timezone=True)",
+                    "nullable": false
+                },
+                {
+                    "name": "note",
+                    "type": "Text",
+                    "nullable": true
+                },
+                {
+                    "name": "is_booked",
+                    "type": "Boolean",
+                    "nullable": false,
+                    "default": false,
+                    "server_default": "false",
+                    "index": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "doctor",
+                    "target": "Doctor",
+                    "kind": "many-to-one",
+                    "back_populates": "availabilities"
+                }
+            ]
+        },
+        "Appointment": {
+            "table": "appointment",
+            "fields": [
+                {
+                    "name": "appointment_id",
+                    "type": "String(8)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "patient_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "patient.patient_id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "doctor_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "doctor.doctor_id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "availability_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "availability.availability_id",
+                    "ondelete": "CASCADE",
+                    "index": true,
+                    "unique": true
+                },
+                {
+                    "name": "booked_by_user_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "reason",
+                    "type": "Text",
+                    "nullable": true
+                },
+                {
+                    "name": "notes",
+                    "type": "Text",
+                    "nullable": true
+                },
+                {
+                    "name": "status",
+                    "type": "Enum(AppointmentStatusEnum, name=appointment_status_enum, values_callable=[e.value for e in enum])",
+                    "nullable": false,
+                    "default": "AppointmentStatusEnum.SCHEDULED",
+                    "server_default": "scheduled",
+                    "index": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "patient",
+                    "target": "Patient",
+                    "kind": "many-to-one"
+                },
+                {
+                    "name": "doctor",
+                    "target": "Doctor",
+                    "kind": "many-to-one"
+                },
+                {
+                    "name": "availability",
+                    "target": "Availability",
+                    "kind": "one-to-one",
+                    "notes": "Uniqueness on availability_id enforces one appointment per slot"
+                },
+                {
+                    "name": "booked_by",
+                    "target": "User",
+                    "kind": "many-to-one"
+                },
+                {
+                    "name": "changed_times",
+                    "target": "AppointmentChangedTime",
+                    "kind": "one-to-many",
+                    "back_populates": "appointment",
+                    "cascade": "all, delete-orphan"
+                }
+            ]
+        },
+        "AppointmentChangedTime": {
+            "table": "appointment_changed_time",
+            "fields": [
+                {
+                    "name": "changed_time_id",
+                    "type": "String(12)",
+                    "primary_key": true,
+                    "nullable": false,
+                    "index": true
+                },
+                {
+                    "name": "appointment_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "appointment.appointment_id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "start_date_time",
+                    "type": "DateTime(timezone=True)",
+                    "nullable": false
+                },
+                {
+                    "name": "end_date_time",
+                    "type": "DateTime(timezone=True)",
+                    "nullable": false
+                },
+                {
+                    "name": "reason",
+                    "type": "Text",
+                    "nullable": true
+                },
+                {
+                    "name": "changed_at",
+                    "type": "DateTime(timezone=True)",
+                    "nullable": false,
+                    "default": "datetime.now(timezone.utc)"
+                },
+                {
+                    "name": "changed_by_user_id",
+                    "type": "String(8)",
+                    "nullable": false,
+                    "foreign_key": "user.id",
+                    "ondelete": "CASCADE",
+                    "index": true
+                },
+                {
+                    "name": "created_at",
+                    "inherited_from": "TimestampMixin"
+                },
+                {
+                    "name": "updated_at",
+                    "inherited_from": "TimestampMixin"
+                }
+            ],
+            "relationships": [
+                {
+                    "name": "appointment",
+                    "target": "Appointment",
+                    "kind": "many-to-one",
+                    "back_populates": "changed_times"
+                },
+                {
+                    "name": "changed_by",
+                    "target": "User",
+                    "kind": "many-to-one"
+                }
+            ]
+        }
+    }
+}
