@@ -11,6 +11,7 @@ from app.core.app import app_health
 from app.core.config import settings
 from app.core.configuration.cloudinary_config import configure_cloudinary
 from app.core.configuration.firebase_config import init_firebase
+from app.core.configuration.khalti_config import init_khalti
 from app.modules.appointment.v1 import changed_time_router
 from app.modules.appointment.v1 import router as appointment_router
 from app.modules.auth.v1 import router as auth_router
@@ -19,12 +20,14 @@ from app.modules.department.v1 import router as department_router
 from app.modules.doctor.v1 import router as doctor_router
 from app.modules.file.v1 import router as file_router
 from app.modules.hospital.v1 import router as hospital_router
+from app.modules.payment.v1 import router as payment_router
 from app.modules.user.v1 import router as user_router
 
 
 def startup_event():
     init_firebase()
     configure_cloudinary()
+    init_khalti()
 
 
 @asynccontextmanager
@@ -100,4 +103,5 @@ app.include_router(availability_router.router, prefix=settings.API_V1_STR)
 app.include_router(department_router.router, prefix=settings.API_V1_STR)
 app.include_router(appointment_router.router, prefix=settings.API_V1_STR)
 app.include_router(changed_time_router.router, prefix=settings.API_V1_STR)
+app.include_router(payment_router.router, prefix=settings.API_V1_STR)
 app.include_router(file_router.router, prefix=settings.API_V1_STR)
