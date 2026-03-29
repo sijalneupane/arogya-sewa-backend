@@ -92,6 +92,10 @@ class HospitalByIdResponseSchema(HospitalResponseSchema):
     admin: Optional[UserResponse] = None
 
 
+class NearestHospitalResponseSchema(HospitalResponseSchema):
+    distance_km: float
+
+
 class HospitalListResponseSchema(BaseModel):
     message: str = "Hospitals fetched successfully"
     data: list[HospitalResponseSchema]

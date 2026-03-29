@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.common.schema import role
 from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.security import get_current_user
@@ -10,19 +9,18 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.hospital.v1.schema import (
     AdminHospitalDetailResponseSchema,
     AdminHospitalResponseSchema,
+    FilterHospitaList,
     HospitalByIdResponseSchema,
     HospitalCreateSchema,
     HospitalDetailResponseSchema,
-    FilterHospitaList,
-    HospitalListResponseSchema,
     HospitalResponseSchema,
     HospitalUpdateSchema,
+    NearestHospitalResponseSchema,
 )
 from app.modules.hospital.v1.service import (
     add_hospital,
     delete_hospital,
     get_all_hospitals,
-    get_closest_hospital_long_lat_haversine,
     get_closest_hospital_long_lat_vincenity,
     get_hospital_by_admin_id,
     get_hospital_by_id,
@@ -106,13 +104,20 @@ async def get_closest_hospitals(
     size: int = 10,
     db: AsyncSession = Depends(get_db),
     # _=Depends(authorize),
-) -> PaginatedResponse[list[HospitalResponseSchema]]:
-    hospitals, total = await get_closest_hospital_long_lat_haversine(
+) -> PaginatedResponse[list[NearestHospitalResponseSchema]]:
+    hospitals_with_distance, total = await get_closest_hospital_long_lat_vincenity(
         db, latitude, longitude, max_distance_km, page, size
     )
-    hospital_responses = [
-        HospitalResponseSchema.model_validate(hospital) for hospital in hospitals
-    ]
+    hospital_responses = []
+    for hospital, distance in hospitals_with_distance:
+        base_response = HospitalResponseSchema.model_validate(hospital)
+        hospital_responses.append(
+            NearestHospitalResponseSchema(
+                **base_response.model_dump(),
+                files=base_response.files,
+                distance_km=round(distance, 2),
+            )
+        )
 
     total_pages = (total + size - 1) // size if total > 0 else 0
 

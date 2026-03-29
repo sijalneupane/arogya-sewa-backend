@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
+from app.modules.availability.v1.schema import AvailabilityResponseSchema
 from app.modules.department.v1.schema import DepartmentResponseSchema
 from app.modules.file.v1.schemas import FileResponseSchema
 from app.modules.hospital.v1.schema import HospitalResponseSchema
@@ -20,19 +21,20 @@ class DoctorCreateSchema(BaseModel):
     Schema for creating a new doctor record.
 
     Attributes:
-        experience (str): Professional experience description of the doctor. 
+        experience (str): Professional experience description of the doctor.
             Defaults to "No experience."
-        license_certificate_id (str): Required unique identifier for the doctor's 
+        license_certificate_id (str): Required unique identifier for the doctor's
             medical license certificate.
-        department_id (Optional[str]): Optional identifier for the department 
+        department_id (Optional[str]): Optional identifier for the department
             the doctor belongs to. Defaults to None.
-        bio (Optional[str]): Optional biography or description of the doctor 
+        bio (Optional[str]): Optional biography or description of the doctor
             with a maximum length of 1000 characters. Defaults to None.
-        status (DoctorStatusEnum): Current status of the doctor account. 
+        status (DoctorStatusEnum): Current status of the doctor account.
             Defaults to DoctorStatusEnum.ACTIVE.
-        user (DoctorUserCredentialsWithProfileImage): Required nested schema containing 
+        user (DoctorUserCredentialsWithProfileImage): Required nested schema containing
             the doctor's user credentials and profile image information.
     """
+
     experience: str = "No experience."
     license_certificate_id: str
     department_id: Optional[str] = None
@@ -77,6 +79,7 @@ class DoctorResponseSchema(BaseModel):
     hospital_id: Optional[str] = None
     department: Optional[DepartmentResponseSchema] = None
     user: UserResponse
+    upcoming_availability: Optional[AvailabilityResponseSchema] = None
 
 
 # class HospitalBasicInfo(BaseModel):
@@ -110,6 +113,10 @@ class DoctorFilterSchema(BaseModel):
         None, description="Filter by doctor status"
     )
     department_id: Optional[str] = Field(None, description="Filter by department ID")
+    free_upcoming_only: bool = Field(
+        False,
+        description="If true, attach only unbooked upcoming availability; otherwise attach any upcoming availability.",
+    )
 
 
 class DoctorDetailResponseSchema(BaseModel):

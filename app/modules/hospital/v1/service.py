@@ -1,8 +1,7 @@
-from ast import Not
 from typing import List, Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import exists, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -384,35 +383,59 @@ async def get_closest_hospital_long_lat_vincenity(
     latitude: float,
     longitude: float,
     max_distance_km: float = 20,
-):
+    page: int = 1,
+    size: int = 10,
+) -> Tuple[list[Tuple[Hospital, float]], int]:
     """Get hospitals within a certain distance from the given coordinates."""
     from geopy.distance import geodesic
 
-    print("\n-------get_closest_hospital_long_lat-------\n")
     try:
-        hospitals = await db.execute(
-            select(Hospital).options(
-                selectinload(Hospital.admin).selectinload(User.role),
-                selectinload(Hospital.files),
-            )
-        )
-        hospitals = hospitals.scalars().all()
+        user_coords = (latitude, longitude)
+        try:
+            geodesic(user_coords, user_coords).km
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid latitude or longitude provided",
+            ) from exc
 
-        print("\n-------" + str(len(hospitals)) + "-------\n")
-        nearby_hospitals = []
+        hospitals, _ = await get_all_hospitals(
+            db,
+            filters=FilterHospitaList(
+                address=None,
+                name=None,
+                opened_date_from=None,
+                opened_date_to=None,
+                page=1,
+                size=500,
+            ),
+        )
+
+        nearby_hospitals: list[Tuple[Hospital, float]] = []
         for hosp in hospitals:
+            if hosp.latitude is None or hosp.longitude is None:
+                continue
+
             hospital_coords = (hosp.latitude, hosp.longitude)
-            user_coords = (latitude, longitude)
-            distance = geodesic(hospital_coords, user_coords).km
+
+            try:
+                distance = geodesic(hospital_coords, user_coords).km
+            except ValueError:
+                continue
+
             if distance <= max_distance_km:
                 nearby_hospitals.append((hosp, distance))
 
-        # Sort the list by distance (closest first)
         nearby_hospitals.sort(key=lambda item: item[1])
-        print("\n-------" + str(nearby_hospitals) + "-------\n")
 
-        # Return only hospitals, now perfectly ordered from closest to farthest
-        return [hosp for hosp, distance in nearby_hospitals]
+        total_count = len(nearby_hospitals)
+
+        offset = (page - 1) * size
+        paginated_hospitals = nearby_hospitals[offset : offset + size]
+
+        return paginated_hospitals, total_count
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
