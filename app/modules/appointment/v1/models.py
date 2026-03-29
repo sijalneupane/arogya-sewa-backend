@@ -61,8 +61,8 @@ class Appointment(Base, TimestampMixin):
             values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
-        default=AppointmentStatusEnum.SCHEDULED,
-        server_default=AppointmentStatusEnum.SCHEDULED.value,
+        default=AppointmentStatusEnum.PENDING_PAYMENT,
+        server_default=AppointmentStatusEnum.PENDING_PAYMENT.value,
         index=True,
     )
 
