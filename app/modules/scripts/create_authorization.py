@@ -64,6 +64,10 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
             "/api/v1/appointment-changed-times/appointment/{appointment_id}",
             readOnlyMethods,
         ),
+        # Super admin payment access
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
+        ),
     ]
 
 
@@ -115,6 +119,16 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/departments/{department_id}", writeMethods
         ),
+        # Hospital admin payment access
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/payments/hospital-admin/appointments",
+            readOnlyMethods,
+        ),
+        setAuthorizationPermissions(role, "/api/v1/payments/cash/record", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
+        ),
     ]
 
 
@@ -145,6 +159,14 @@ def getUserPermissions(role: Role) -> List[Authorization]:
             role,
             "/api/v1/appointment-changed-times/appointment/{appointment_id}",
             readOnlyMethods,
+        ),
+        # Patient payment access
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/initiate", postMethod
+        ),
+        setAuthorizationPermissions(role, "/api/v1/payments/khalti/verify", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
         ),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
@@ -183,6 +205,14 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
             role,
             "/api/v1/appointment-changed-times/appointment/{appointment_id}",
             readOnlyMethods,
+        ),
+        setAuthorizationPermissions(role, "/api/v1/payments/cash/record", postMethod),
+        # Doctor payment access
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/doctor/my-appointments", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
         ),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods

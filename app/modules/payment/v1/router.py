@@ -2,8 +2,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.common.enums.role_enum import RoleEnum
+from app.core.authorization import authorize
 from app.core.config import settings
+from app.core.security import get_current_user
 from app.db.db import get_db
+from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.appointment.v1.models import Appointment
 from app.modules.payment.v1.khalti_service import KhaltiGateway, get_khalti_gateway
 from app.modules.payment.v1.schemas import (
@@ -38,6 +42,8 @@ async def initiate_khalti_payment(
     request: KhaltiInitiatePaymentRequest,
     payment_service: PaymentService = Depends(get_payment_service),
     db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
 ):
     """
     Initiate Khalti payment for appointment advance (10%).
@@ -65,7 +71,7 @@ async def initiate_khalti_payment(
     # Create advance payment
     payment_info = await payment_service.create_advance_payment(
         appointment_id=request.appointment_id,
-        paid_by_user_id=appointment.booked_by_user_id,
+        paid_by_user_id=user.sub,
         doctor_fee=request.doctor_fee,
         customer_phone=request.customer_phone,
         return_url=return_url,
@@ -85,6 +91,8 @@ async def verify_khalti_payment(
     pidx: str = Query(..., description="Khalti payment identifier"),
     appointment_id: str = Query(..., description="Appointment ID"),
     payment_service: PaymentService = Depends(get_payment_service),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
 ):
     """
     Verify Khalti payment and complete appointment booking.
@@ -118,6 +126,8 @@ async def record_cash_payment_endpoint(
     request: CashPaymentRecordRequest,
     payment_service: PaymentService = Depends(get_payment_service),
     db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
 ):
     """
     Record a cash payment for remaining appointment dues.
@@ -138,7 +148,7 @@ async def record_cash_payment_endpoint(
 
     payment = await payment_service.record_cash_payment(
         appointment_id=request.appointment_id,
-        paid_by_user_id=request.user_id,
+        paid_by_user_id=user.sub,
         amount=request.amount,
         remarks=request.remarks,
     )
@@ -150,7 +160,42 @@ async def record_cash_payment_endpoint(
 async def get_appointment_payment_history(
     appointment_id: str,
     payment_service: PaymentService = Depends(get_payment_service),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
 ):
     """Get all payments for an appointment"""
     payments = await payment_service.get_appointment_payments(appointment_id)
+    return [PaymentResponseSchema.from_orm(p) for p in payments]
+
+
+@router.get("/doctor/my-appointments", response_model=list[PaymentResponseSchema])
+async def get_doctor_payment_records(
+    payment_service: PaymentService = Depends(get_payment_service),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+):
+    """Get all payment records for appointments where the logged-in doctor is involved."""
+    if user.role != RoleEnum.DOCTOR:
+        raise HTTPException(
+            status_code=403, detail="Only doctors can access this endpoint"
+        )
+
+    payments = await payment_service.get_doctor_payments(user.sub)
+    return [PaymentResponseSchema.from_orm(p) for p in payments]
+
+
+@router.get("/hospital-admin/appointments", response_model=list[PaymentResponseSchema])
+async def get_hospital_admin_payment_records(
+    payment_service: PaymentService = Depends(get_payment_service),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+):
+    """Get all payment records for appointments handled by doctors in admin's hospital."""
+    if user.role != RoleEnum.HOSPITAL_ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Only hospital admins can access this endpoint",
+        )
+
+    payments = await payment_service.get_hospital_admin_payments(user.sub)
     return [PaymentResponseSchema.from_orm(p) for p in payments]

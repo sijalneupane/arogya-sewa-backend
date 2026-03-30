@@ -13,6 +13,8 @@ from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
 from app.modules.appointment.v1.models import Appointment
+from app.modules.doctor.v1.models import Doctor
+from app.modules.hospital.v1.models import Hospital
 from app.modules.payment.v1.khalti_service import KhaltiGateway, KhaltiGatewayError
 from app.modules.payment.v1.models import Payment
 
@@ -193,6 +195,49 @@ class PaymentService:
         result = await self.db.execute(
             select(Payment)
             .where(Payment.appointment_id == appointment_id)
+            .order_by(Payment.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_doctor_payments(self, doctor_user_id: str) -> list[Payment]:
+        """Get all payments for appointments belonging to the logged-in doctor."""
+        doctor_result = await self.db.execute(
+            select(Doctor).where(Doctor.user_id == doctor_user_id)
+        )
+        doctor = doctor_result.scalar_one_or_none()
+
+        if not doctor:
+            raise HTTPException(
+                status_code=403,
+                detail="User is not associated with a doctor profile",
+            )
+
+        result = await self.db.execute(
+            select(Payment)
+            .join(Appointment, Payment.appointment_id == Appointment.appointment_id)
+            .where(Appointment.doctor_id == doctor.doctor_id)
+            .order_by(Payment.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def get_hospital_admin_payments(self, admin_user_id: str) -> list[Payment]:
+        """Get all payments for appointments handled by doctors in admin's hospital."""
+        hospital_result = await self.db.execute(
+            select(Hospital).where(Hospital.admin_id == admin_user_id)
+        )
+        hospital = hospital_result.scalar_one_or_none()
+
+        if not hospital:
+            raise HTTPException(
+                status_code=403,
+                detail="Hospital admin must be associated with a hospital",
+            )
+
+        result = await self.db.execute(
+            select(Payment)
+            .join(Appointment, Payment.appointment_id == Appointment.appointment_id)
+            .join(Doctor, Appointment.doctor_id == Doctor.doctor_id)
+            .where(Doctor.hospital_id == hospital.hospital_id)
             .order_by(Payment.created_at.desc())
         )
         return list(result.scalars().all())
