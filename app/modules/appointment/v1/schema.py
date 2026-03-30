@@ -14,6 +14,7 @@ from app.modules.doctor.v1.schema import DoctorResponseSchema
 from app.modules.patient.v1.schema import PatientResponse
 from app.modules.user.v1.schema import UserResponse
 
+
 # class ChangedTimeInfo(BaseModel):
 #     """Changed time information for appointment response"""
 
