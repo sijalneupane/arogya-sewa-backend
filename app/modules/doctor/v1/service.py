@@ -1,4 +1,5 @@
-from typing import List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
 from sqlalchemy import func, or_, select
@@ -8,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
+from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
 from app.modules.doctor.v1.schema import DoctorUserUpdateSchema
 from app.modules.file.v1.models import File
@@ -15,6 +17,33 @@ from app.modules.file.v1.service import delete_file
 from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
 from app.modules.user.v1.service import create_user
+
+
+async def get_upcoming_availability_by_doctor_ids(
+    db: AsyncSession, doctor_ids: List[str], free_upcoming_only: bool = False
+) -> Dict[str, Availability]:
+    """Return each doctor's nearest upcoming availability keyed by doctor_id."""
+    if not doctor_ids:
+        return {}
+
+    now = datetime.now(timezone.utc)
+    query = select(Availability).where(
+        Availability.doctor_id.in_(doctor_ids),
+        Availability.start_date_time >= now,
+    )
+    if free_upcoming_only:
+        query = query.where(Availability.is_booked.is_(False))
+
+    result = await db.execute(
+        query.order_by(Availability.doctor_id, Availability.start_date_time)
+    )
+
+    nearest_by_doctor: Dict[str, Availability] = {}
+    for availability in result.scalars().all():
+        if availability.doctor_id not in nearest_by_doctor:
+            nearest_by_doctor[availability.doctor_id] = availability
+
+    return nearest_by_doctor
 
 
 async def create_doctor(

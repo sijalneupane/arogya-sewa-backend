@@ -30,6 +30,7 @@ from app.modules.doctor.v1.service import (
     get_doctor_by_user_id,
     get_doctors_by_hospital,
     get_doctors_of_logged_in_hospital_admin,
+    get_upcoming_availability_by_doctor_ids,
     update_doctor,
     # upgrade_user_to_doctor,
 )
@@ -82,9 +83,18 @@ async def get_doctors(
         page=pagination.page,
         size=pagination.size,
     )
-    doctor_responses = [
-        DoctorResponseSchema.model_validate(doctor) for doctor in doctors
-    ]
+    upcoming_availability_by_doctor = await get_upcoming_availability_by_doctor_ids(
+        db=db,
+        doctor_ids=[doctor.doctor_id for doctor in doctors],
+        free_upcoming_only=filters.free_upcoming_only,
+    )
+    doctor_responses = []
+    for doctor in doctors:
+        response = DoctorResponseSchema.model_validate(doctor)
+        response.upcoming_availability = upcoming_availability_by_doctor.get(
+            doctor.doctor_id
+        )
+        doctor_responses.append(response)
     return PaginatedResponse(
         message="Doctors fetched successfully",
         data=doctor_responses,
@@ -148,9 +158,18 @@ async def get_hospital_admin_doctors(
         page=pagination.page,
         size=pagination.size,
     )
-    doctor_responses = [
-        DoctorResponseSchema.model_validate(doctor) for doctor in doctors
-    ]
+    upcoming_availability_by_doctor = await get_upcoming_availability_by_doctor_ids(
+        db=db,
+        doctor_ids=[doctor.doctor_id for doctor in doctors],
+        free_upcoming_only=filters.free_upcoming_only,
+    )
+    doctor_responses = []
+    for doctor in doctors:
+        response = DoctorResponseSchema.model_validate(doctor)
+        response.upcoming_availability = upcoming_availability_by_doctor.get(
+            doctor.doctor_id
+        )
+        doctor_responses.append(response)
     return PaginatedResponse(
         message=f"Doctors for hospital admin {hospital_admin_id.sub} fetched successfully",
         data=doctor_responses,
@@ -181,9 +200,18 @@ async def get_hospital_doctors(
         page=pagination.page,
         size=pagination.size,
     )
-    doctor_responses = [
-        DoctorResponseSchema.model_validate(doctor) for doctor in doctors
-    ]
+    upcoming_availability_by_doctor = await get_upcoming_availability_by_doctor_ids(
+        db=db,
+        doctor_ids=[doctor.doctor_id for doctor in doctors],
+        free_upcoming_only=filters.free_upcoming_only,
+    )
+    doctor_responses = []
+    for doctor in doctors:
+        response = DoctorResponseSchema.model_validate(doctor)
+        response.upcoming_availability = upcoming_availability_by_doctor.get(
+            doctor.doctor_id
+        )
+        doctor_responses.append(response)
     return PaginatedResponse(
         message=f"Doctors for hospital {hospital_id} fetched successfully",
         data=doctor_responses,
