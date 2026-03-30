@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.common.schema.pagination import PaginationMeta
 from app.core.authorization import authorize
@@ -93,7 +94,9 @@ async def list_all_appointments_super_admin(
     doctor_name: Optional[str] = Query(None, description="Search by doctor name"),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
     patient_name: Optional[str] = Query(None, description="Search by patient name"),
-    status: Optional[str] = Query(None, description="Filter by appointment status"),
+    status: Optional[AppointmentStatusEnum] = Query(
+        None, description="Filter by appointment status"
+    ),
     date_from: Optional[date] = Query(
         None, description="Filter appointments from this date"
     ),
@@ -168,7 +171,9 @@ async def list_all_appointments_super_admin(
 
 @router.get("/patient/my-appointments", summary="Get my appointments (Patient)")
 async def list_patient_appointments(
-    status: Optional[str] = Query(None, description="Filter by appointment status"),
+    status: Optional[AppointmentStatusEnum] = Query(
+        None, description="Filter by appointment status"
+    ),
     date_from: Optional[date] = Query(
         None, description="Filter appointments from this date"
     ),
@@ -237,7 +242,9 @@ async def list_patient_appointments(
 
 @router.get("/doctor/my-appointments", summary="Get my appointments (Doctor)")
 async def list_doctor_appointments(
-    status: Optional[str] = Query(None, description="Filter by appointment status"),
+    status: Optional[AppointmentStatusEnum] = Query(
+        None, description="Filter by appointment status"
+    ),
     date_from: Optional[date] = Query(
         None, description="Filter appointments from this date"
     ),
@@ -313,7 +320,9 @@ async def list_hospital_admin_appointments(
     ),
     patient_id: Optional[str] = Query(None, description="Filter by patient ID"),
     patient_name: Optional[str] = Query(None, description="Search by patient name"),
-    status: Optional[str] = Query(None, description="Filter by appointment status"),
+    status: Optional[AppointmentStatusEnum] = Query(
+        None, description="Filter by appointment status"
+    ),
     date_from: Optional[date] = Query(
         None, description="Filter appointments from this date"
     ),

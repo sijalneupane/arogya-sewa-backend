@@ -348,7 +348,7 @@ async def get_all_appointments_super_admin(
         query = query.join(Doctor).join(
             Hospital, Doctor.hospital_id == Hospital.hospital_id
         )
-        conditions.append(Hospital.hospital_name.ilike(f"%{hospital_name}%"))
+        conditions.append(Hospital.name.ilike(f"%{hospital_name}%"))
 
     if doctor_name:
         if not hospital_name:  # Only join Doctor if not already joined
@@ -376,33 +376,35 @@ async def get_all_appointments_super_admin(
     if status:
         conditions.append(Appointment.status == status)
 
+    # Date filtering through availability relationship
     if appointment_date:
-        conditions.append(Appointment.appointment_date == appointment_date)
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
+        conditions.append(func.date(Availability.start_date_time) == appointment_date)
     elif date_from or date_to:
+        query = query.join(
+            Availability, Appointment.availability_id == Availability.availability_id
+        )
         if date_from:
-            conditions.append(Appointment.appointment_date >= date_from)
+            conditions.append(func.date(Availability.start_date_time) >= date_from)
         if date_to:
-            conditions.append(Appointment.appointment_date <= date_to)
+            conditions.append(func.date(Availability.start_date_time) <= date_to)
 
     # Apply all conditions
     if conditions:
         query = query.where(and_(*conditions))
 
-    # Get total count
-    count_query = select(func.count()).select_from(Appointment)
-    if hospital_name:
-        count_query = count_query.join(Doctor).join(
-            Hospital, Doctor.hospital_id == Hospital.hospital_id
-        )
-    if conditions:
-        count_query = count_query.where(and_(*conditions))
-
+    # Get total count from the fully filtered query so joins stay consistent
+    count_query = select(func.count()).select_from(
+        query.with_only_columns(Appointment.appointment_id).order_by(None).subquery()
+    )
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
     # Apply ordering and pagination (page is 1-indexed)
     skip = (page - 1) * size
-    query = query.order_by(Appointment.appointment_date.desc())
+    query = query.order_by(Appointment.created_at.desc())
     query = query.offset(skip).limit(size)
 
     # Execute query
@@ -496,8 +498,10 @@ async def get_patient_appointments(
     # Apply all conditions
     query = query.where(and_(*conditions))
 
-    # Get total count
-    count_query = select(func.count()).select_from(Appointment).where(and_(*conditions))
+    # Get total count from the fully filtered query so joins stay consistent
+    count_query = select(func.count()).select_from(
+        query.with_only_columns(Appointment.appointment_id).order_by(None).subquery()
+    )
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
@@ -597,8 +601,10 @@ async def get_doctor_appointments(
     # Apply all conditions
     query = query.where(and_(*conditions))
 
-    # Get total count
-    count_query = select(func.count()).select_from(Appointment).where(and_(*conditions))
+    # Get total count from the fully filtered query so joins stay consistent
+    count_query = select(func.count()).select_from(
+        query.with_only_columns(Appointment.appointment_id).order_by(None).subquery()
+    )
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
 
@@ -736,12 +742,9 @@ async def get_hospital_admin_appointments(
     # Apply all conditions
     query = query.where(and_(*conditions))
 
-    # Get total count
-    count_query = (
-        select(func.count())
-        .select_from(Appointment)
-        .join(Doctor)
-        .where(and_(*conditions))
+    # Get total count from the fully filtered query so joins stay consistent
+    count_query = select(func.count()).select_from(
+        query.with_only_columns(Appointment.appointment_id).order_by(None).subquery()
     )
     count_result = await db.execute(count_query)
     total = count_result.scalar() or 0
