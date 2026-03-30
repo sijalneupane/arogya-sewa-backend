@@ -88,6 +88,15 @@ class PaymentResponseSchema(BaseModel):
         from_attributes = True
 
 
+class CashPaymentRecordRequest(BaseModel):
+    """Request body for recording a cash payment."""
+
+    appointment_id: str = Field(..., description="Appointment ID")
+    amount: float = Field(..., gt=0, description="Amount in rupees")
+    user_id: str = Field(..., description="User making payment")
+    remarks: Optional[str] = Field(None, description="Payment remarks")
+
+
 class AppointmentBookingWithPaymentRequest(BaseModel):
     """Request for booking appointment with Khalti payment"""
 

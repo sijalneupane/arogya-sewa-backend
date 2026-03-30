@@ -7,6 +7,7 @@ from app.db.db import get_db
 from app.modules.appointment.v1.models import Appointment
 from app.modules.payment.v1.khalti_service import KhaltiGateway, get_khalti_gateway
 from app.modules.payment.v1.schemas import (
+    CashPaymentRecordRequest,
     KhaltiInitiatePaymentRequest,
     KhaltiInitiatePaymentResponse,
     PaymentResponseSchema,
@@ -114,10 +115,7 @@ async def verify_khalti_payment(
 
 @router.post("/cash/record", response_model=PaymentResponseSchema)
 async def record_cash_payment_endpoint(
-    appointment_id: str = Query(..., description="Appointment ID"),
-    amount: float = Query(..., gt=0, description="Amount in rupees"),
-    user_id: str = Query(..., description="User making payment"),
-    remarks: str = Query(None, description="Payment remarks"),
+    request: CashPaymentRecordRequest,
     payment_service: PaymentService = Depends(get_payment_service),
     db: AsyncSession = Depends(get_db),
 ):
@@ -131,7 +129,7 @@ async def record_cash_payment_endpoint(
     """
     # Validate appointment exists
     result = await db.execute(
-        select(Appointment).where(Appointment.appointment_id == appointment_id)
+        select(Appointment).where(Appointment.appointment_id == request.appointment_id)
     )
     appointment = result.scalar_one_or_none()
 
@@ -139,10 +137,10 @@ async def record_cash_payment_endpoint(
         raise HTTPException(status_code=404, detail="Appointment not found")
 
     payment = await payment_service.record_cash_payment(
-        appointment_id=appointment_id,
-        paid_by_user_id=user_id,
-        amount=amount,
-        remarks=remarks,
+        appointment_id=request.appointment_id,
+        paid_by_user_id=request.user_id,
+        amount=request.amount,
+        remarks=request.remarks,
     )
 
     return PaymentResponseSchema.from_orm(payment)
