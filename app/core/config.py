@@ -7,6 +7,9 @@ class Settings(BaseSettings):
     APP_NAME: str = "Arogya Sewa Backend APIs"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    APP_DOMAIN: str = Field(
+        default="http://localhost:8000", description="API domain for callbacks"
+    )
 
     SECRET_KEY: str = Field(..., min_length=32)
     ACCESS_TOKEN_EXPIRE_DAYS: int = 7
@@ -23,6 +26,21 @@ class Settings(BaseSettings):
     CLOUDINARY_CLOUD_NAME: str
     CLOUDINARY_API_KEY: str
     CLOUDINARY_API_SECRET: str
+
+    # Khalti Payment Gateway settings
+    KHALTI_SECRET_KEY: str = Field(
+        ..., description="Khalti backend secret key (required)"
+    )
+    KHALTI_PUBLIC_KEY: str = Field(
+        ..., description="Khalti frontend public key (required)"
+    )
+    KHALTI_API_URL: str = Field(
+        default="https://dev.khalti.com/api/v2",
+        description="Khalti API endpoint (default: sandbox)",
+    )
+    ADVANCE_PAYMENT_PERCENTAGE: float = Field(
+        default=10.0, description="Advance payment percentage for appointments"
+    )
 
     # --- SYNC engine (for Alembic and scripts)
     @property

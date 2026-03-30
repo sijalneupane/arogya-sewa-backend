@@ -2,7 +2,7 @@ from enum import StrEnum
 
 
 class AppointmentStatusEnum(StrEnum):
-    SCHEDULED = "scheduled"
+    PENDING_PAYMENT = "pending_payment"
     CONFIRMED = "confirmed"
     INPROGRESS = "inprogress"
     COMPLETED = "completed"

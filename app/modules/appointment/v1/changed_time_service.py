@@ -74,7 +74,7 @@ async def can_user_view_changed_time(
         hospital_result = await db.execute(
             select(Hospital).where(
                 Hospital.hospital_id == appointment.doctor.hospital_id,
-                Hospital.admin_user_id == user_id,
+                Hospital.admin_id == user_id,
             )
         )
         hospital = hospital_result.scalar_one_or_none()

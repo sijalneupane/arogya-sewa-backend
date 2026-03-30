@@ -22,15 +22,19 @@ class DoctorCreateSchema(BaseModel):
 
     Attributes:
         experience (str): Professional experience description of the doctor.
+        experience (str): Professional experience description of the doctor.
             Defaults to "No experience."
+        license_certificate_id (str): Required unique identifier for the doctor's
         license_certificate_id (str): Required unique identifier for the doctor's
             medical license certificate.
         department_id (Optional[str]): Optional identifier for the department
+        department_id (Optional[str]): Optional identifier for the department
             the doctor belongs to. Defaults to None.
+        bio (Optional[str]): Optional biography or description of the doctor
         bio (Optional[str]): Optional biography or description of the doctor
             with a maximum length of 1000 characters. Defaults to None.
         status (DoctorStatusEnum): Current status of the doctor account.
-            Defaults to DoctorStatusEnum.ACTIVE.
+            Defaults to DoctorStatusEnum.AVAILABLE.
         user (DoctorUserCredentialsWithProfileImage): Required nested schema containing
             the doctor's user credentials and profile image information.
     """
@@ -39,7 +43,7 @@ class DoctorCreateSchema(BaseModel):
     license_certificate_id: str
     department_id: Optional[str] = None
     bio: Optional[str] = Field(None, max_length=1000)
-    status: DoctorStatusEnum = DoctorStatusEnum.ACTIVE
+    status: DoctorStatusEnum = DoctorStatusEnum.AVAILABLE
     # hospital_id: Optional[str] = None
     user: DoctorUserCredentialsWithProfileImage
 
@@ -75,6 +79,7 @@ class DoctorResponseSchema(BaseModel):
     experience: str
     status: DoctorStatusEnum
     bio: Optional[str] = None
+    booking_fee: float
     license_certificate: Optional[FileResponseSchema] = None
     hospital_id: Optional[str] = None
     department: Optional[DepartmentResponseSchema] = None
@@ -112,7 +117,9 @@ class DoctorFilterSchema(BaseModel):
     status: Optional[DoctorStatusEnum] = Field(
         None, description="Filter by doctor status"
     )
-    department_id: Optional[str] = Field(None, description="Filter by department ID")
+    department: Optional[str] = Field(
+        None, description="Filter by department ID (exact) or name (partial match)"
+    )
     free_upcoming_only: bool = Field(
         False,
         description="If true, attach only unbooked upcoming availability; otherwise attach any upcoming availability.",

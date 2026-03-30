@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -234,7 +234,7 @@ async def get_all_doctors(
     db: AsyncSession,
     name: Optional[str] = None,
     status: Optional[DoctorStatusEnum] = None,
-    department_id: Optional[str] = None,
+    department: Optional[str] = None,
     page: int = 1,
     size: int = 10,
 ) -> Tuple[List[Doctor], int]:
@@ -255,8 +255,15 @@ async def get_all_doctors(
             base_query = base_query.where(User.name.ilike(f"%{name}%"))
         if status:
             base_query = base_query.where(Doctor.status == status)
-        if department_id:
-            base_query = base_query.where(Doctor.department_id == department_id)
+        if department:
+            from app.modules.department.v1.models import Department
+
+            base_query = base_query.outerjoin(Doctor.department).where(
+                or_(
+                    Doctor.department_id == department,
+                    Department.name.ilike(f"%{department}%"),
+                )
+            )
 
         count_result = await db.execute(
             select(func.count()).select_from(base_query.subquery())
@@ -328,7 +335,7 @@ async def get_doctors_by_hospital(
     hospital_id: str,
     name: Optional[str] = None,
     status: Optional[DoctorStatusEnum] = None,
-    department_id: Optional[str] = None,
+    department: Optional[str] = None,
     page: int = 1,
     size: int = 10,
 ) -> Tuple[List[Doctor], int]:
@@ -358,8 +365,15 @@ async def get_doctors_by_hospital(
             base_query = base_query.where(User.name.ilike(f"%{name}%"))
         if status:
             base_query = base_query.where(Doctor.status == status)
-        if department_id:
-            base_query = base_query.where(Doctor.department_id == department_id)
+        if department:
+            from app.modules.department.v1.models import Department
+
+            base_query = base_query.outerjoin(Doctor.department).where(
+                or_(
+                    Doctor.department_id == department,
+                    Department.name.ilike(f"%{department}%"),
+                )
+            )
 
         count_result = await db.execute(
             select(func.count()).select_from(base_query.subquery())
@@ -379,7 +393,7 @@ async def get_doctors_of_logged_in_hospital_admin(
     hospital_admin_id: str,
     name: Optional[str] = None,
     status: Optional[DoctorStatusEnum] = None,
-    department_id: Optional[str] = None,
+    department: Optional[str] = None,
     page: int = 1,
     size: int = 10,
 ) -> Tuple[List[Doctor], int]:
@@ -411,8 +425,15 @@ async def get_doctors_of_logged_in_hospital_admin(
             base_query = base_query.where(User.name.ilike(f"%{name}%"))
         if status:
             base_query = base_query.where(Doctor.status == status)
-        if department_id:
-            base_query = base_query.where(Doctor.department_id == department_id)
+        if department:
+            from app.modules.department.v1.models import Department
+
+            base_query = base_query.outerjoin(Doctor.department).where(
+                or_(
+                    Doctor.department_id == department,
+                    Department.name.ilike(f"%{department}%"),
+                )
+            )
 
         count_result = await db.execute(
             select(func.count()).select_from(base_query.subquery())
