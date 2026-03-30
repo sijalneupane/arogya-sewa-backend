@@ -29,7 +29,7 @@ class DoctorCreateSchema(BaseModel):
         bio (Optional[str]): Optional biography or description of the doctor
             with a maximum length of 1000 characters. Defaults to None.
         status (DoctorStatusEnum): Current status of the doctor account.
-            Defaults to DoctorStatusEnum.ACTIVE.
+            Defaults to DoctorStatusEnum.AVAILABLE.
         user (DoctorUserCredentialsWithProfileImage): Required nested schema containing
             the doctor's user credentials and profile image information.
     """
@@ -38,7 +38,7 @@ class DoctorCreateSchema(BaseModel):
     license_certificate_id: str
     department_id: Optional[str] = None
     bio: Optional[str] = Field(None, max_length=1000)
-    status: DoctorStatusEnum = DoctorStatusEnum.ACTIVE
+    status: DoctorStatusEnum = DoctorStatusEnum.AVAILABLE
     # hospital_id: Optional[str] = None
     user: DoctorUserCredentialsWithProfileImage
 

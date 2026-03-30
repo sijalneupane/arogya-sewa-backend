@@ -25,7 +25,7 @@ class Doctor(Base, TimestampMixin):
     status: Mapped[DoctorStatusEnum] = mapped_column(
         Enum(DoctorStatusEnum, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
-        default=DoctorStatusEnum.ACTIVE,
+        default=DoctorStatusEnum.AVAILABLE,
     )
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     booking_fee: Mapped[float] = mapped_column(nullable=False, default=0.0)
