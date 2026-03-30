@@ -1,8 +1,11 @@
+import math
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.common.enums.role_enum import RoleEnum
+from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.config import settings
 from app.core.security import get_current_user
@@ -14,6 +17,7 @@ from app.modules.payment.v1.schemas import (
     CashPaymentRecordRequest,
     KhaltiInitiatePaymentRequest,
     KhaltiInitiatePaymentResponse,
+    PaymentFilterQuery,
     PaymentResponseSchema,
 )
 from app.modules.payment.v1.service import (
@@ -168,34 +172,56 @@ async def get_appointment_payment_history(
     return [PaymentResponseSchema.from_orm(p) for p in payments]
 
 
-@router.get("/doctor/my-appointments", response_model=list[PaymentResponseSchema])
+@router.get(
+    "/doctor/my-appointments",
+    response_model=PaginatedResponse[list[PaymentResponseSchema]],
+)
 async def get_doctor_payment_records(
+    filters: PaymentFilterQuery = Depends(),
     payment_service: PaymentService = Depends(get_payment_service),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
 ):
     """Get all payment records for appointments where the logged-in doctor is involved."""
-    if user.role != RoleEnum.DOCTOR:
-        raise HTTPException(
-            status_code=403, detail="Only doctors can access this endpoint"
-        )
+    payments, total = await payment_service.get_doctor_payments(
+        doctor_user_id=user.sub,
+        filters=filters,
+    )
+    return PaginatedResponse(
+        message="Doctor payment records fetched successfully",
+        data=[PaymentResponseSchema.from_orm(p) for p in payments],
+        paginationMeta=PaginationMeta(
+            totalPage=math.ceil(total / filters.size) if total else 0,
+            currentPage=filters.page,
+            pageSize=filters.size,
+            totalRecords=total,
+        ),
+    )
 
-    payments = await payment_service.get_doctor_payments(user.sub)
-    return [PaymentResponseSchema.from_orm(p) for p in payments]
 
-
-@router.get("/hospital-admin/appointments", response_model=list[PaymentResponseSchema])
+@router.get(
+    "/hospital-admin/appointments",
+    response_model=PaginatedResponse[list[PaymentResponseSchema]],
+)
 async def get_hospital_admin_payment_records(
+    filters: PaymentFilterQuery = Depends(),
     payment_service: PaymentService = Depends(get_payment_service),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
 ):
     """Get all payment records for appointments handled by doctors in admin's hospital."""
-    if user.role != RoleEnum.HOSPITAL_ADMIN:
-        raise HTTPException(
-            status_code=403,
-            detail="Only hospital admins can access this endpoint",
-        )
 
-    payments = await payment_service.get_hospital_admin_payments(user.sub)
-    return [PaymentResponseSchema.from_orm(p) for p in payments]
+    payments, total = await payment_service.get_hospital_admin_payments(
+        admin_user_id=user.sub,
+        filters=filters,
+    )
+    return PaginatedResponse(
+        message="Hospital admin payment records fetched successfully",
+        data=[PaymentResponseSchema.from_orm(p) for p in payments],
+        paginationMeta=PaginationMeta(
+            totalPage=math.ceil(total / filters.size) if total else 0,
+            currentPage=filters.page,
+            pageSize=filters.size,
+            totalRecords=total,
+        ),
+    )

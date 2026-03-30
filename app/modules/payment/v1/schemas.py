@@ -1,12 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.common.schema.pagination import PaginationQuery
 from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.modules.user.v1.schema import UserResponse
 
 
 class KhaltiInitiatePaymentRequest(BaseModel):
@@ -81,6 +83,7 @@ class PaymentResponseSchema(BaseModel):
     gateway_ref: Optional[str] = None
     remarks: Optional[str] = None
     paid_at: Optional[datetime] = None
+    paid_by: Optional[UserResponse] = None
     created_at: datetime
     updated_at: datetime
 
@@ -95,6 +98,23 @@ class CashPaymentRecordRequest(BaseModel):
     amount: float = Field(..., gt=0, description="Amount in rupees")
     user_id: str = Field(..., description="User making payment")
     remarks: Optional[str] = Field(None, description="Payment remarks")
+
+
+class PaymentFilterQuery(PaginationQuery):
+    """Filter and pagination query for payment list endpoints."""
+
+    status: Optional[PaymentTransactionStatusEnum] = Field(
+        None,
+        description="Filter by payment transaction status",
+    )
+    from_date: Optional[date] = Field(
+        None,
+        description="Filter payments from this date (inclusive)",
+    )
+    to_date: Optional[date] = Field(
+        None,
+        description="Filter payments up to this date (inclusive)",
+    )
 
 
 class AppointmentBookingWithPaymentRequest(BaseModel):
