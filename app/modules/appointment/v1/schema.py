@@ -4,13 +4,15 @@ from typing import Annotated, Optional
 from pydantic import BaseModel, Field
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
+from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.schema.pagination import PaginationMeta
-from app.modules.appointment.v1.changed_time_schema import AppointmentChangedTimeSingleInfoSchema
+from app.modules.appointment.v1.changed_time_schema import (
+    AppointmentChangedTimeSingleInfoSchema,
+)
 from app.modules.availability.v1.schema import AvailabilityResponseSchema
 from app.modules.doctor.v1.schema import DoctorResponseSchema
 from app.modules.patient.v1.schema import PatientResponse
 from app.modules.user.v1.schema import UserResponse
-
 
 # class ChangedTimeInfo(BaseModel):
 #     """Changed time information for appointment response"""
@@ -91,6 +93,10 @@ class AppointmentResponseSchema(BaseModel):
     availability: AvailabilityResponseSchema
     reason: Optional[str]
     notes: Optional[str]
+    total_amount: float
+    paid_amount: float
+    due_amount: float
+    payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     created_at: datetime
     updated_at: datetime
@@ -109,6 +115,10 @@ class AppointmentDetailResponseSchema(BaseModel):
     availability: AvailabilityResponseSchema
     reason: Optional[str]
     notes: Optional[str]
+    total_amount: float
+    paid_amount: float
+    due_amount: float
+    payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     # booked_by_user_id: str
     changed_times: list[AppointmentChangedTimeSingleInfoSchema]
