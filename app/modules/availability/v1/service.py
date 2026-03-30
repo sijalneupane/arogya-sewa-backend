@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import and_, select
+from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -94,7 +94,9 @@ async def get_availabilities_by_doctor(
     doctor_id: str,
     future_only: bool = True,
     is_booked: Optional[bool] = None,
-) -> List[Availability]:
+    page: int = 1,
+    size: int = 10,
+) -> tuple[List[Availability], int]:
     """Get all availabilities for a specific doctor"""
     # Verify doctor exists
     doctor_result = await db.execute(
@@ -104,7 +106,7 @@ async def get_availabilities_by_doctor(
         raise HTTPException(status_code=404, detail="Doctor not found")
 
     # Build query
-    query = (
+    base_query = (
         select(Availability)
         .options(selectinload(Availability.doctor).selectinload(Doctor.user))
         .where(Availability.doctor_id == doctor_id)
@@ -113,39 +115,61 @@ async def get_availabilities_by_doctor(
     # Filter for future dates if requested
     if future_only:
         now = datetime.now(timezone.utc)
-        query = query.where(Availability.start_date_time >= now)
+        base_query = base_query.where(Availability.start_date_time >= now)
 
     # Filter by booking status if specified
     if is_booked is not None:
-        query = query.where(Availability.is_booked == is_booked)
+        base_query = base_query.where(Availability.is_booked == is_booked)
 
-    query = query.order_by(Availability.start_date_time)
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
+    )
+    total = count_result.scalar_one()
+
+    query = (
+        base_query.order_by(Availability.start_date_time)
+        .offset((page - 1) * size)
+        .limit(size)
+    )
 
     result = await db.execute(query)
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total
 
 
 async def get_all_availabilities(
-    db: AsyncSession, future_only: bool = True, is_booked: Optional[bool] = None
-) -> List[Availability]:
+    db: AsyncSession,
+    future_only: bool = True,
+    is_booked: Optional[bool] = None,
+    page: int = 1,
+    size: int = 10,
+) -> tuple[List[Availability], int]:
     """Get all availabilities across all doctors"""
-    query = select(Availability).options(
+    base_query = select(Availability).options(
         selectinload(Availability.doctor).selectinload(Doctor.user)
     )
 
     # Filter for future dates if requested
     if future_only:
         now = datetime.now(timezone.utc)
-        query = query.where(Availability.start_date_time >= now)
+        base_query = base_query.where(Availability.start_date_time >= now)
 
     # Filter by booking status if specified
     if is_booked is not None:
-        query = query.where(Availability.is_booked == is_booked)
+        base_query = base_query.where(Availability.is_booked == is_booked)
 
-    query = query.order_by(Availability.start_date_time)
+    count_result = await db.execute(
+        select(func.count()).select_from(base_query.subquery())
+    )
+    total = count_result.scalar_one()
+
+    query = (
+        base_query.order_by(Availability.start_date_time)
+        .offset((page - 1) * size)
+        .limit(size)
+    )
 
     result = await db.execute(query)
-    return list(result.scalars().all())
+    return list(result.scalars().all()), total
 
 
 async def update_availability(

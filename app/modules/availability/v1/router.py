@@ -3,6 +3,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.common.schema.pagination import (
+    PaginatedResponse,
+    PaginationMeta,
+    PaginationQuery,
+)
 from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
@@ -10,7 +15,6 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.availability.v1.schema import (
     AvailabilityCreateSchema,
     AvailabilityDetailResponseSchema,
-    AvailabilityListResponseSchema,
     AvailabilityResponseSchema,
     AvailabilityUpdateSchema,
 )
@@ -64,16 +68,31 @@ async def get_availabilities(
         None,
         description="Filter by booking status (True for booked, False for available)",
     ),
+    pagination: PaginationQuery = Depends(),
     db: AsyncSession = Depends(get_db),
-) -> AvailabilityListResponseSchema:
+) -> PaginatedResponse[list[AvailabilityResponseSchema]]:
     """Get all availability slots. Public endpoint - no authentication required."""
-    availabilities = await get_all_availabilities(
-        db=db, future_only=future_only, is_booked=is_booked
+    availabilities, total = await get_all_availabilities(
+        db=db,
+        future_only=future_only,
+        is_booked=is_booked,
+        page=pagination.page,
+        size=pagination.size,
     )
     availability_responses = [
         AvailabilityResponseSchema.model_validate(avail) for avail in availabilities
     ]
-    return AvailabilityListResponseSchema(data=availability_responses)
+    total_pages = (total + pagination.size - 1) // pagination.size if total > 0 else 0
+    return PaginatedResponse(
+        message="Availabilities fetched successfully",
+        data=availability_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=total_pages,
+            currentPage=pagination.page,
+            pageSize=pagination.size,
+            totalRecords=total,
+        ),
+    )
 
 
 @router.get("/doctor/{doctor_id}", summary="Get availabilities for a specific doctor")
@@ -84,16 +103,32 @@ async def get_doctor_availabilities(
         None,
         description="Filter by booking status (True for booked, False for available)",
     ),
+    pagination: PaginationQuery = Depends(),
     db: AsyncSession = Depends(get_db),
-) -> AvailabilityListResponseSchema:
+) -> PaginatedResponse[list[AvailabilityResponseSchema]]:
     """Get all availability slots for a specific doctor. Public endpoint."""
-    availabilities = await get_availabilities_by_doctor(
-        db=db, doctor_id=doctor_id, future_only=future_only, is_booked=is_booked
+    availabilities, total = await get_availabilities_by_doctor(
+        db=db,
+        doctor_id=doctor_id,
+        future_only=future_only,
+        is_booked=is_booked,
+        page=pagination.page,
+        size=pagination.size,
     )
     availability_responses = [
         AvailabilityResponseSchema.model_validate(avail) for avail in availabilities
     ]
-    return AvailabilityListResponseSchema(data=availability_responses)
+    total_pages = (total + pagination.size - 1) // pagination.size if total > 0 else 0
+    return PaginatedResponse(
+        message="Availabilities fetched successfully",
+        data=availability_responses,
+        paginationMeta=PaginationMeta(
+            totalPage=total_pages,
+            currentPage=pagination.page,
+            pageSize=pagination.size,
+            totalRecords=total,
+        ),
+    )
 
 
 @router.get("/{availability_id}", summary="Get a specific availability by ID")
