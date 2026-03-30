@@ -154,7 +154,7 @@ async def list_all_appointments_super_admin(
     total_pages = ceil(total / size) if total > 0 else 0
     pagination_meta = PaginationMeta(
         currentPage=page,
-        totalPages=total_pages,
+        totalPage=total_pages,
         pageSize=size,
         totalRecords=total,
     )
@@ -223,7 +223,7 @@ async def list_patient_appointments(
     total_pages = ceil(total / size) if total > 0 else 0
     pagination_meta = PaginationMeta(
         currentPage=page,
-        totalPages=total_pages,
+        totalPage=total_pages,
         pageSize=size,
         totalRecords=total,
     )
@@ -292,7 +292,7 @@ async def list_doctor_appointments(
     total_pages = ceil(total / size) if total > 0 else 0
     pagination_meta = PaginationMeta(
         currentPage=page,
-        totalPages=total_pages,
+        totalPage=total_pages,
         pageSize=size,
         totalRecords=total,
     )
@@ -373,7 +373,7 @@ async def list_hospital_admin_appointments(
     total_pages = ceil(total / size) if total > 0 else 0
     pagination_meta = PaginationMeta(
         currentPage=page,
-        totalPages=total_pages,
+        totalPage=total_pages,
         pageSize=size,
         totalRecords=total,
     )

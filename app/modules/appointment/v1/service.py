@@ -137,6 +137,7 @@ async def get_appointment_by_id(
             .selectinload(Doctor.user)
             .selectinload(User.files),
             selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
+            selectinload(Appointment.doctor).selectinload(Doctor.department),
             selectinload(Appointment.availability),
             selectinload(Appointment.booked_by).selectinload(User.role),
             selectinload(Appointment.booked_by).selectinload(User.files),
@@ -333,6 +334,7 @@ async def get_all_appointments_super_admin(
         .selectinload(Doctor.user)
         .selectinload(User.files),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
+        selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by).selectinload(User.role),
         selectinload(Appointment.booked_by).selectinload(User.files),
@@ -463,6 +465,7 @@ async def get_patient_appointments(
         .selectinload(Doctor.user)
         .selectinload(User.files),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
+        selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by).selectinload(User.role),
         selectinload(Appointment.booked_by).selectinload(User.files),
@@ -563,6 +566,7 @@ async def get_doctor_appointments(
         .selectinload(Doctor.user)
         .selectinload(User.files),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
+        selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
         selectinload(Appointment.booked_by).selectinload(User.role),
         selectinload(Appointment.booked_by).selectinload(User.files),
@@ -676,6 +680,7 @@ async def get_hospital_admin_appointments(
             .selectinload(Doctor.user)
             .selectinload(User.files),
             selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
+            selectinload(Appointment.doctor).selectinload(Doctor.department),
             selectinload(Appointment.availability),
             selectinload(Appointment.booked_by).selectinload(User.role),
             selectinload(Appointment.booked_by).selectinload(User.files),

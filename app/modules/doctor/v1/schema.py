@@ -20,19 +20,20 @@ class DoctorCreateSchema(BaseModel):
     Schema for creating a new doctor record.
 
     Attributes:
-        experience (str): Professional experience description of the doctor. 
+        experience (str): Professional experience description of the doctor.
             Defaults to "No experience."
-        license_certificate_id (str): Required unique identifier for the doctor's 
+        license_certificate_id (str): Required unique identifier for the doctor's
             medical license certificate.
-        department_id (Optional[str]): Optional identifier for the department 
+        department_id (Optional[str]): Optional identifier for the department
             the doctor belongs to. Defaults to None.
-        bio (Optional[str]): Optional biography or description of the doctor 
+        bio (Optional[str]): Optional biography or description of the doctor
             with a maximum length of 1000 characters. Defaults to None.
-        status (DoctorStatusEnum): Current status of the doctor account. 
+        status (DoctorStatusEnum): Current status of the doctor account.
             Defaults to DoctorStatusEnum.ACTIVE.
-        user (DoctorUserCredentialsWithProfileImage): Required nested schema containing 
+        user (DoctorUserCredentialsWithProfileImage): Required nested schema containing
             the doctor's user credentials and profile image information.
     """
+
     experience: str = "No experience."
     license_certificate_id: str
     department_id: Optional[str] = None
@@ -73,6 +74,7 @@ class DoctorResponseSchema(BaseModel):
     experience: str
     status: DoctorStatusEnum
     bio: Optional[str] = None
+    booking_fee: float
     license_certificate: Optional[FileResponseSchema] = None
     hospital_id: Optional[str] = None
     department: Optional[DepartmentResponseSchema] = None
