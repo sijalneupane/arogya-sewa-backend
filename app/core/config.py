@@ -42,6 +42,15 @@ class Settings(BaseSettings):
         default=10.0, description="Advance payment percentage for appointments"
     )
 
+    # Mailgun settings
+    MAILGUN_ENABLED: bool = Field(default=False)
+    MAILGUN_API_KEY: str | None = None
+    MAILGUN_DOMAIN: str | None = None
+    MAILGUN_BASE_URL: str = "https://api.mailgun.net/v3"
+    MAILGUN_FROM_EMAIL: str = "Arogya Sewa <mail@yourdomain.com>"
+    MAILGUN_WEBHOOK_SIGNING_KEY: str | None = None
+    MAILGUN_TIMEOUT_SECONDS: float = 15.0
+
     # --- SYNC engine (for Alembic and scripts)
     @property
     def DATABASE_URL(self) -> str:
