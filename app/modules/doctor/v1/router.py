@@ -78,7 +78,7 @@ async def get_doctors(
         db=db,
         name=filters.name,
         status=filters.status,
-        department_id=filters.department_id,
+        department=filters.department,
         page=pagination.page,
         size=pagination.size,
     )
@@ -144,7 +144,7 @@ async def get_hospital_admin_doctors(
         hospital_admin_id=hospital_admin_id.sub,
         name=filters.name,
         status=filters.status,
-        department_id=filters.department_id,
+        department=filters.department,
         page=pagination.page,
         size=pagination.size,
     )
@@ -177,7 +177,7 @@ async def get_hospital_doctors(
         hospital_id=hospital_id,
         name=filters.name,
         status=filters.status,
-        department_id=filters.department_id,
+        department=filters.department,
         page=pagination.page,
         size=pagination.size,
     )

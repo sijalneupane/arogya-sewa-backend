@@ -111,7 +111,9 @@ class DoctorFilterSchema(BaseModel):
     status: Optional[DoctorStatusEnum] = Field(
         None, description="Filter by doctor status"
     )
-    department_id: Optional[str] = Field(None, description="Filter by department ID")
+    department: Optional[str] = Field(
+        None, description="Filter by department ID (exact) or name (partial match)"
+    )
 
 
 class DoctorDetailResponseSchema(BaseModel):
