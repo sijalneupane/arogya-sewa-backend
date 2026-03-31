@@ -1,3 +1,4 @@
+import logging
 import math
 from typing import List
 
@@ -10,6 +11,7 @@ from app.common.schema.pagination import (
     PaginationQuery,
 )
 from app.core.authorization import authorize
+from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
@@ -34,6 +36,30 @@ from app.modules.doctor.v1.service import (
     update_doctor,
     # upgrade_user_to_doctor,
 )
+from app.modules.email.v1.mailgun_service import MailgunGateway
+
+logger = logging.getLogger(__name__)
+
+
+async def _send_doctor_account_created_email(
+    *,
+    service: MailgunGateway,
+    doctor_name: str,
+    doctor_email: str,
+) -> None:
+    """Send a confirmation email to the newly created doctor account."""
+    await service.send_text_email(
+        to=[doctor_email],
+        subject="Your doctor account has been created",
+        text=(
+            f"Hello Dr. {doctor_name},\n\n"
+            "Your doctor account has been created successfully on Arogya Sewa.\n"
+            "You can now sign in and complete your profile details if needed.\n\n"
+            "Thank you,\n"
+            "Arogya Sewa Team"
+        ),
+    )
+
 
 router = APIRouter(
     prefix="/doctors",
@@ -63,6 +89,21 @@ async def create_new_doctor(
         bio=data.bio,
         profile_img_id=data.user.profile_image_id,
     )
+
+    try:
+        mailgun_service = get_mailgun_service()
+        await _send_doctor_account_created_email(
+            service=mailgun_service,
+            doctor_name=data.user.name,
+            doctor_email=data.user.email,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Doctor account created but success email could not be sent to %s: %s",
+            data.user.email,
+            str(exc),
+        )
+
     response = DoctorResponseSchema.model_validate(created_doctor)
     return DoctorPostPatchResponse(message="Doctor created successfully", data=response)
 
