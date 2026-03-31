@@ -6,10 +6,30 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from app.core.configuration.mailgun_config import get_mailgun_service
 from app.modules.email.v1.mailgun_service import MailgunGateway
-from app.modules.email.v1.schemas import MailgunWebhookResponse
+from app.modules.email.v1.schemas import (
+    MailgunWebhookResponse,
+    SendEmailResponse,
+    SendTextEmailRequest,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/email", tags=["Email"])
+
+
+@router.post("/mailgun/test-send", response_model=SendEmailResponse)
+async def send_test_email(
+    payload: SendTextEmailRequest,
+    service: MailgunGateway = Depends(get_mailgun_service),
+):
+    result = await service.send_text_email(
+        to=[str(email) for email in payload.to],
+        subject=payload.subject,
+        text=payload.text,
+    )
+    return SendEmailResponse(
+        id=result.get("id"),
+        message=result.get("message", "Email sent"),
+    )
 
 
 def _extract_signature_and_event(
