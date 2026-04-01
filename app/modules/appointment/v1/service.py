@@ -91,6 +91,19 @@ async def create_appointment(
     # Fetch availability and validate business rules
     availability = await validate_availability_for_booking(db, availability_id)
 
+    # Fetch doctor to get booking fee
+    doctor_result = await db.execute(
+        select(Doctor).where(Doctor.doctor_id == availability.doctor_id)
+    )
+    doctor = doctor_result.scalar_one_or_none()
+
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+
+    # Calculate payment amounts
+    doctor_fee = doctor.booking_fee
+    advance_fee = doctor_fee * 0.10  # 10% of doctor fee as advance
+
     # Create appointment
     appointment_id = StringUtils.randomAlphaNumeric(8)
     appointment = Appointment(
@@ -101,6 +114,10 @@ async def create_appointment(
         booked_by_user_id=user_id,
         reason=reason,
         notes=notes,
+        total_amount=doctor_fee,
+        paid_amount=0,
+        due_amount=doctor_fee,
+        advance_fee=advance_fee,
     )
 
     # Mark availability as booked
@@ -136,6 +153,9 @@ async def get_appointment_by_id(
             selectinload(Appointment.doctor)
             .selectinload(Doctor.user)
             .selectinload(User.files),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.hospital)
+            .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
             selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
             selectinload(Appointment.doctor).selectinload(Doctor.department),
             selectinload(Appointment.availability),
@@ -333,6 +353,9 @@ async def get_all_appointments_super_admin(
         selectinload(Appointment.doctor)
         .selectinload(Doctor.user)
         .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.hospital)
+        .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
@@ -466,6 +489,9 @@ async def get_patient_appointments(
         selectinload(Appointment.doctor)
         .selectinload(Doctor.user)
         .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.hospital)
+        .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
@@ -569,6 +595,9 @@ async def get_doctor_appointments(
         selectinload(Appointment.doctor)
         .selectinload(Doctor.user)
         .selectinload(User.files),
+        selectinload(Appointment.doctor)
+        .selectinload(Doctor.hospital)
+        .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
         selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
         selectinload(Appointment.doctor).selectinload(Doctor.department),
         selectinload(Appointment.availability),
@@ -685,6 +714,9 @@ async def get_hospital_admin_appointments(
             selectinload(Appointment.doctor)
             .selectinload(Doctor.user)
             .selectinload(User.files),
+            selectinload(Appointment.doctor)
+            .selectinload(Doctor.hospital)
+            .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
             selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
             selectinload(Appointment.doctor).selectinload(Doctor.department),
             selectinload(Appointment.availability),

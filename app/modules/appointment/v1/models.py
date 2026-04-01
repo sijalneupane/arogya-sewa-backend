@@ -44,6 +44,7 @@ class Appointment(Base, TimestampMixin):
     total_amount: Mapped[float] = mapped_column(Float, nullable=False)
     paid_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     due_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    advance_fee: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     payment_status: Mapped[PaymentStatusEnum] = mapped_column(
         SQLEnum(
             PaymentStatusEnum,

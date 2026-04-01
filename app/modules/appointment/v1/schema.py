@@ -97,6 +97,7 @@ class AppointmentResponseSchema(BaseModel):
     total_amount: float
     paid_amount: float
     due_amount: float
+    advance_fee: float
     payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     created_at: datetime
@@ -119,6 +120,7 @@ class AppointmentDetailResponseSchema(BaseModel):
     total_amount: float
     paid_amount: float
     due_amount: float
+    advance_fee: float
     payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     # booked_by_user_id: str
