@@ -83,7 +83,12 @@ async def signup_super_admin_route(
 @router.post("/login", response_model=LoginResponse)
 async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
     try:
-        access, refresh, user = await login_user(db, data.email, data.password)
+        access, refresh, user = await login_user(
+            db,
+            data.email,
+            data.password,
+            data.fcm_token,
+        )
 
         return LoginResponse(
             data=LoginData(access_token=access, refresh_token=refresh, user=user)

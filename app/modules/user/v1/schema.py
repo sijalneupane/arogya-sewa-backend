@@ -76,6 +76,7 @@ class SuperAdminSignupSchema(UserCreate):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+    fcm_token: Optional[str] = Field(default=None, max_length=255)
 
 
 class UserUpdate(BaseModel):

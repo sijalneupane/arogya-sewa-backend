@@ -164,11 +164,21 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     return user
 
 
-async def login_user(db: AsyncSession, email: str, password: str):
+async def login_user(
+    db: AsyncSession,
+    email: str,
+    password: str,
+    fcm_token: str | None = None,
+):
     try:
         user = await authenticate_user(db, email, password)
         if not user:
             raise HTTPException(status_code=401, detail="Invalid email or password")
+
+        if fcm_token and fcm_token != user.fcm_token:
+            user.fcm_token = fcm_token
+            await db.commit()
+            await db.refresh(user)
 
         # Load user with role and files
         result = await db.execute(
