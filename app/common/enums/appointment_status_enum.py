@@ -2,9 +2,9 @@ from enum import StrEnum
 
 
 class AppointmentStatusEnum(StrEnum):
-    PENDING_PAYMENT = "pending_payment"
-    CONFIRMED = "confirmed"
-    INPROGRESS = "inprogress"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-    RESCHEDULED = "rescheduled"
+    PENDING_PAYMENT = "Pending Payment"
+    CONFIRMED = "Confirmed"
+    INPROGRESS = "In Progress"
+    COMPLETED = "Completed"
+    CANCELLED = "Cancelled"
+    RESCHEDULED = "Rescheduled"
