@@ -55,7 +55,7 @@ async def send_notification_route(
     data: NotificationSendSchema,
     db: AsyncSession = Depends(get_db),
     _user: JwtPayload = Depends(get_current_user),
-    _=Depends(authorize),
+    # _=Depends(authorize),
 ) -> NotificationSingleResponse:
     notification = await send_notification(
         db=db,
@@ -78,7 +78,7 @@ async def get_my_notifications(
     pagination: PaginationQuery = Depends(),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
-    _=Depends(authorize),
+    # _=Depends(authorize),
 ) -> PaginatedResponse[List[NotificationResponseSchema]]:
     notifications, total = await list_notifications_for_user(
         db=db,
@@ -105,7 +105,7 @@ async def mark_as_read(
     notification_id: str,
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
-    _=Depends(authorize),
+    # _=Depends(authorize),
 ) -> NotificationSingleResponse:
     notification = await mark_notification_as_read(
         db=db,

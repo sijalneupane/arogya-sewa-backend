@@ -6,7 +6,6 @@ from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.modules.availability.v1.schema import AvailabilityResponseSchema
 from app.modules.department.v1.schema import DepartmentResponseSchema
 from app.modules.file.v1.schemas import FileResponseSchema
-from app.modules.hospital.v1.schema import HospitalResponseSchema
 from app.modules.user.v1.schema import UserCreate, UserResponse
 
 
@@ -72,6 +71,16 @@ class UserToDoctorUpgradeSchema(BaseModel):
     department_id: Optional[str] = None
 
 
+class HospitalBasicInfo(BaseModel):
+    """Basic hospital info for doctor response."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    hospital_id: str
+    name: str
+    location: str
+
+
 class DoctorResponseSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -82,19 +91,10 @@ class DoctorResponseSchema(BaseModel):
     booking_fee: float
     license_certificate: Optional[FileResponseSchema] = None
     hospital_id: Optional[str] = None
+    hospital: Optional[HospitalBasicInfo] = None
     department: Optional[DepartmentResponseSchema] = None
     user: UserResponse
     upcoming_availability: Optional[AvailabilityResponseSchema] = None
-
-
-# class HospitalBasicInfo(BaseModel):
-#     """Basic hospital info for doctor response (to avoid circular references)"""
-
-#     model_config = ConfigDict(from_attributes=True)
-
-#     hospital_id: str
-#     name: str
-#     location: str
 
 
 class DoctorWithHospitalResponseSchema(BaseModel):
@@ -107,7 +107,7 @@ class DoctorWithHospitalResponseSchema(BaseModel):
     license_certificate: Optional[FileResponseSchema] = None
     department: Optional[DepartmentResponseSchema] = None
     user: UserResponse
-    hospital: Optional[HospitalResponseSchema] = None
+    hospital: Optional[HospitalBasicInfo] = None
 
 
 class DoctorFilterSchema(BaseModel):
