@@ -121,6 +121,12 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         ),
         # Hospital admin payment access
         setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/initiate", postMethod
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/verify", postMethod
+        ),
+        setAuthorizationPermissions(
             role,
             "/api/v1/payments/hospital-admin/appointments",
             readOnlyMethods,
@@ -166,6 +172,12 @@ def getUserPermissions(role: Role) -> List[Authorization]:
         ),
         setAuthorizationPermissions(role, "/api/v1/payments/khalti/verify", postMethod),
         setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/initiate", postMethod
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/verify", postMethod
+        ),
+        setAuthorizationPermissions(
             role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
         ),
         # setAuthorizationPermissions(
@@ -207,6 +219,12 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
             readOnlyMethods,
         ),
         setAuthorizationPermissions(role, "/api/v1/payments/cash/record", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/initiate", postMethod
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/verify", postMethod
+        ),
         # Doctor payment access
         setAuthorizationPermissions(
             role, "/api/v1/payments/doctor/my-appointments", readOnlyMethods

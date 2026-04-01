@@ -3,23 +3,31 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
-from app.common.schema.pagination import PaginationQuery
 from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.common.schema.pagination import PaginationQuery
 from app.modules.user.v1.schema import UserResponse
 
 
-class KhaltiInitiatePaymentRequest(BaseModel):
-    """Request to initiate Khalti payment for appointment booking"""
+class KhaltiAdvancePaymentRequest(BaseModel):
+    """Request to initiate Khalti advance payment for appointment booking."""
 
     appointment_id: str = Field(
         ..., min_length=8, max_length=8, description="Appointment ID"
     )
-    doctor_fee: float = Field(
-        ..., gt=0, description="Doctor consultation fee in rupees"
+    amount: float = Field(..., gt=0, description="Advance amount in rupees")
+    customer_phone: str = Field(..., description="Customer Khalti ID/phone number")
+
+
+class KhaltiFinalPaymentRequest(BaseModel):
+    """Request to initiate Khalti final payment for appointment completion."""
+
+    appointment_id: str = Field(
+        ..., min_length=8, max_length=8, description="Appointment ID"
     )
+    amount: float = Field(..., gt=0, description="Final payment amount in rupees")
     customer_phone: str = Field(..., description="Customer Khalti ID/phone number")
 
 

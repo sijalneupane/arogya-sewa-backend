@@ -6,39 +6,24 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_loader_criteria
 
-from app.core.config import settings
-from app.core.utils.string_utils import StringUtils
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.core.config import settings
+from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.models import Appointment
+from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
-from app.modules.hospital.v1.models import Hospital
 from app.modules.file.v1.models import File
+from app.modules.hospital.v1.models import Hospital
 from app.modules.payment.v1.khalti_service import KhaltiGateway, KhaltiGatewayError
 from app.modules.payment.v1.models import Payment
 from app.modules.payment.v1.schemas import PaymentFilterQuery
 from app.modules.user.v1.models import User
-
-
-def calculate_advance_amount(doctor_fee: float, advance_percentage: float) -> int:
-    """
-    Calculate advance payment amount in paisa.
-
-    Args:
-        doctor_fee: Doctor consultation fee in rupees
-        advance_percentage: Percentage for advance
-
-    Returns:
-        Advance amount in paisa
-    """
-    advance_amount_rs = doctor_fee * (advance_percentage / 100)
-    # Convert to paisa (multiply by 100)
-    advance_amount_paisa = int(advance_amount_rs * 100)
-    return advance_amount_paisa
 
 
 def generate_payment_id() -> str:
@@ -84,20 +69,90 @@ class PaymentService:
             raise HTTPException(status_code=404, detail="Payment record not found")
         return payment
 
+    async def _get_appointment_or_404(self, appointment_id: str) -> Appointment:
+        result = await self.db.execute(
+            select(Appointment).where(Appointment.appointment_id == appointment_id)
+        )
+        appointment = result.scalar_one_or_none()
+        if not appointment:
+            raise HTTPException(status_code=404, detail="Appointment not found")
+        return appointment
+
+    async def _get_doctor_or_404(self, doctor_id: str) -> Doctor:
+        result = await self.db.execute(
+            select(Doctor).where(Doctor.doctor_id == doctor_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise HTTPException(status_code=404, detail="Doctor not found")
+        return doctor
+
+    @staticmethod
+    def _round_money(amount: float) -> float:
+        return round(float(amount), 2)
+
+    async def _cancel_appointment_and_release_availability(
+        self, appointment: Appointment, reason: str
+    ) -> None:
+        appointment.status = AppointmentStatusEnum.CANCELLED
+        appointment.payment_status = PaymentStatusEnum.UNPAID
+
+        availability_result = await self.db.execute(
+            select(Availability).where(
+                Availability.availability_id == appointment.availability_id
+            )
+        )
+        availability = availability_result.scalar_one_or_none()
+        if availability:
+            availability.is_booked = False
+
+        await self.db.commit()
+        raise HTTPException(status_code=400, detail=reason)
+
     async def create_advance_payment(
         self,
         appointment_id: str,
         paid_by_user_id: str,
-        doctor_fee: float,
+        amount: float,
         customer_phone: str,
         return_url: str,
         website_url: str,
     ) -> dict:
         """Create appointment advance payment request and persist pending transaction."""
-        advance_amount_paisa = calculate_advance_amount(
-            doctor_fee, self.advance_percentage
+        appointment = await self._get_appointment_or_404(appointment_id)
+
+        if appointment.payment_status != PaymentStatusEnum.UNPAID:
+            raise HTTPException(
+                status_code=400,
+                detail="Advance payment is only allowed for unpaid appointments",
+            )
+
+        created_at = appointment.created_at
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        if datetime.now(timezone.utc) > created_at + timedelta(days=1):
+            await self._cancel_appointment_and_release_availability(
+                appointment,
+                "Advance payment window expired. Appointment has been cancelled.",
+            )
+
+        doctor = await self._get_doctor_or_404(appointment.doctor_id)
+        expected_advance_amount = self._round_money(
+            doctor.booking_fee * (self.advance_percentage / 100)
         )
-        advance_amount_rs = advance_amount_paisa / 100
+        requested_amount = self._round_money(amount)
+
+        if requested_amount != expected_advance_amount:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid advance amount. "
+                    f"Expected {expected_advance_amount}, got {requested_amount}."
+                ),
+            )
+
+        advance_amount_paisa = int(expected_advance_amount * 100)
         payment_id = generate_payment_id()
 
         try:
@@ -119,7 +174,7 @@ class PaymentService:
             payment_id=payment_id,
             appointment_id=appointment_id,
             paid_by_user_id=paid_by_user_id,
-            amount=advance_amount_rs,
+            amount=expected_advance_amount,
             payment_method=PaymentMethodEnum.KHALTI,
             status=PaymentTransactionStatusEnum.PENDING,
             gateway_ref=khalti_response.get("pidx"),
@@ -157,23 +212,34 @@ class PaymentService:
         if not payment:
             raise HTTPException(status_code=404, detail="Payment record not found")
 
+        if payment.appointment_id != appointment_id:
+            raise HTTPException(
+                status_code=400, detail="Appointment and payment mismatch"
+            )
+
+        appointment = await self._get_appointment_or_404(appointment_id)
+
+        if self._round_money(payment.amount) != self._round_money(
+            appointment.advance_fee
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="This payment is not a valid advance payment",
+            )
+
         if status == "Completed":
             payment.status = PaymentTransactionStatusEnum.SUCCESS
             payment.transaction_id = khalti_response.get("transaction_id")
             payment.paid_at = datetime.now(timezone.utc)
-
-            appointment = await self.db.execute(
-                select(Appointment).where(Appointment.appointment_id == appointment_id)
+            appointment.payment_status = PaymentStatusEnum.PARTIAL
+            appointment.paid_amount = self._round_money(payment.amount)
+            appointment.due_amount = self._round_money(
+                appointment.total_amount - appointment.paid_amount
             )
-            appt = appointment.scalar_one_or_none()
-
-            if appt:
-                appt.payment_status = PaymentStatusEnum.PARTIAL
-                appt.paid_amount = payment.amount
-                appt.due_amount = appt.total_amount - payment.amount
 
         elif status == "Pending":
             payment.status = PaymentTransactionStatusEnum.PENDING
+            await self.db.commit()
             raise HTTPException(
                 status_code=202,
                 detail="Payment is still pending. Please try again later.",
@@ -181,10 +247,162 @@ class PaymentService:
 
         elif status in ["User canceled", "Expired"]:
             payment.status = PaymentTransactionStatusEnum.FAILED
+            await self.db.commit()
             raise HTTPException(status_code=400, detail=f"Payment {status.lower()}")
 
         else:
             payment.status = PaymentTransactionStatusEnum.FAILED
+            await self.db.commit()
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payment failed with status: {status}",
+            )
+
+        await self.db.commit()
+        return await self._get_payment_with_user(payment.payment_id)
+
+    async def create_final_payment(
+        self,
+        appointment_id: str,
+        paid_by_user_id: str,
+        amount: float,
+        customer_phone: str,
+        return_url: str,
+        website_url: str,
+    ) -> dict:
+        """Create Khalti payment request for remaining due amount."""
+        appointment = await self._get_appointment_or_404(appointment_id)
+
+        if appointment.payment_status != PaymentStatusEnum.PARTIAL:
+            raise HTTPException(
+                status_code=400,
+                detail="Final payment requires a successful advance payment",
+            )
+
+        remaining_due = self._round_money(
+            appointment.total_amount - appointment.paid_amount
+        )
+        requested_amount = self._round_money(amount)
+
+        if requested_amount != remaining_due:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid final payment amount. "
+                    f"Expected {remaining_due}, got {requested_amount}."
+                ),
+            )
+
+        final_amount_paisa = int(remaining_due * 100)
+        payment_id = generate_payment_id()
+
+        try:
+            khalti_response = await self.khalti_gateway.initiate_payment(
+                amount=final_amount_paisa,
+                purchase_order_id=appointment_id,
+                purchase_order_name="Appointment final payment",
+                customer_name="Patient",
+                customer_email="patient@arogya.com",
+                customer_phone=customer_phone,
+                return_url=return_url,
+                website_url=website_url,
+                merchant_extra=payment_id,
+            )
+        except KhaltiGatewayError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        payment = Payment(
+            payment_id=payment_id,
+            appointment_id=appointment_id,
+            paid_by_user_id=paid_by_user_id,
+            amount=remaining_due,
+            payment_method=PaymentMethodEnum.KHALTI,
+            status=PaymentTransactionStatusEnum.PENDING,
+            gateway_ref=khalti_response.get("pidx"),
+            remarks="Final payment",
+        )
+
+        self.db.add(payment)
+        await self.db.commit()
+
+        return {
+            "pidx": khalti_response.get("pidx"),
+            "payment_url": khalti_response.get("payment_url"),
+            "expires_at": khalti_response.get("expires_at"),
+            "expires_in": khalti_response.get("expires_in"),
+            "payment_id": payment_id,
+        }
+
+    async def verify_and_complete_final_payment(
+        self,
+        pidx: str,
+        appointment_id: str,
+    ) -> Payment:
+        """Verify Khalti final payment and close appointment as fully paid."""
+        try:
+            khalti_response = await self.khalti_gateway.verify_payment(pidx)
+        except KhaltiGatewayError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+        status = khalti_response.get("status")
+        result = await self.db.execute(
+            select(Payment).where(Payment.gateway_ref == pidx)
+        )
+        payment = result.scalar_one_or_none()
+
+        if not payment:
+            raise HTTPException(status_code=404, detail="Payment record not found")
+
+        if payment.appointment_id != appointment_id:
+            raise HTTPException(
+                status_code=400, detail="Appointment and payment mismatch"
+            )
+
+        appointment = await self._get_appointment_or_404(appointment_id)
+        remaining_due = self._round_money(
+            appointment.total_amount - appointment.paid_amount
+        )
+
+        if self._round_money(payment.amount) != remaining_due:
+            raise HTTPException(
+                status_code=400,
+                detail="This payment is not a valid final payment",
+            )
+
+        if appointment.payment_status != PaymentStatusEnum.PARTIAL:
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment is not in partial payment state",
+            )
+
+        if status == "Completed":
+            payment.status = PaymentTransactionStatusEnum.SUCCESS
+            payment.transaction_id = khalti_response.get("transaction_id")
+            payment.paid_at = datetime.now(timezone.utc)
+
+            appointment.paid_amount = self._round_money(
+                appointment.paid_amount + payment.amount
+            )
+            appointment.due_amount = 0
+            appointment.payment_status = PaymentStatusEnum.PAID
+            appointment.status = AppointmentStatusEnum.COMPLETED
+
+        elif status == "Pending":
+            payment.status = PaymentTransactionStatusEnum.PENDING
+            await self.db.commit()
+            raise HTTPException(
+                status_code=202,
+                detail="Payment is still pending. Please try again later.",
+            )
+
+        elif status in ["User canceled", "Expired"]:
+            payment.status = PaymentTransactionStatusEnum.FAILED
+            await self.db.commit()
+            raise HTTPException(status_code=400, detail=f"Payment {status.lower()}")
+
+        else:
+            payment.status = PaymentTransactionStatusEnum.FAILED
+            await self.db.commit()
             raise HTTPException(
                 status_code=400,
                 detail=f"Payment failed with status: {status}",
@@ -200,19 +418,48 @@ class PaymentService:
         amount: float,
         remarks: Optional[str] = None,
     ) -> Payment:
-        """Record a cash payment for remaining appointment dues."""
+        """Record a cash payment for final remaining appointment dues."""
+        appointment = await self._get_appointment_or_404(appointment_id)
+
+        if appointment.payment_status != PaymentStatusEnum.PARTIAL:
+            raise HTTPException(
+                status_code=400,
+                detail="Cash final payment requires a successful advance payment",
+            )
+
+        remaining_due = self._round_money(
+            appointment.total_amount - appointment.paid_amount
+        )
+        requested_amount = self._round_money(amount)
+
+        if requested_amount != remaining_due:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Invalid cash payment amount. "
+                    f"Expected {remaining_due}, got {requested_amount}."
+                ),
+            )
+
         payment_id = generate_payment_id()
 
         payment = Payment(
             payment_id=payment_id,
             appointment_id=appointment_id,
             paid_by_user_id=paid_by_user_id,
-            amount=amount,
+            amount=remaining_due,
             payment_method=PaymentMethodEnum.CASH,
             status=PaymentTransactionStatusEnum.SUCCESS,
             paid_at=datetime.now(timezone.utc),
-            remarks=remarks or "Cash payment",
+            remarks=remarks or "Final cash payment",
         )
+
+        appointment.paid_amount = self._round_money(
+            appointment.paid_amount + remaining_due
+        )
+        appointment.due_amount = 0
+        appointment.payment_status = PaymentStatusEnum.PAID
+        appointment.status = AppointmentStatusEnum.COMPLETED
 
         self.db.add(payment)
         await self.db.commit()

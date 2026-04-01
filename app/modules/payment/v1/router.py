@@ -1,21 +1,21 @@
 import math
 
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.common.enums.role_enum import RoleEnum
 from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.db.db import get_db
-from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.appointment.v1.models import Appointment
+from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.payment.v1.khalti_service import KhaltiGateway, get_khalti_gateway
 from app.modules.payment.v1.schemas import (
     CashPaymentRecordRequest,
-    KhaltiInitiatePaymentRequest,
+    KhaltiAdvancePaymentRequest,
+    KhaltiFinalPaymentRequest,
     KhaltiInitiatePaymentResponse,
     PaymentFilterQuery,
     PaymentResponseSchema,
@@ -42,8 +42,8 @@ def get_payment_service(
 
 
 @router.post("/khalti/initiate", response_model=KhaltiInitiatePaymentResponse)
-async def initiate_khalti_payment(
-    request: KhaltiInitiatePaymentRequest,
+async def initiate_khalti_advance_payment(
+    request: KhaltiAdvancePaymentRequest,
     payment_service: PaymentService = Depends(get_payment_service),
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
@@ -76,7 +76,7 @@ async def initiate_khalti_payment(
     payment_info = await payment_service.create_advance_payment(
         appointment_id=request.appointment_id,
         paid_by_user_id=user.sub,
-        doctor_fee=request.doctor_fee,
+        amount=request.amount,
         customer_phone=request.customer_phone,
         return_url=return_url,
         website_url=website_url,
@@ -91,7 +91,7 @@ async def initiate_khalti_payment(
 
 
 @router.post("/khalti/verify")
-async def verify_khalti_payment(
+async def verify_khalti_advance_payment(
     pidx: str = Query(..., description="Khalti payment identifier"),
     appointment_id: str = Query(..., description="Appointment ID"),
     payment_service: PaymentService = Depends(get_payment_service),
@@ -115,7 +115,71 @@ async def verify_khalti_payment(
 
         return {
             "status": "success",
-            "message": "Payment verified and appointment booking confirmed",
+            "message": "Advance payment verified successfully",
+            "payment": PaymentResponseSchema.from_orm(payment),
+        }
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/khalti/final/initiate", response_model=KhaltiInitiatePaymentResponse)
+async def initiate_khalti_final_payment(
+    request: KhaltiFinalPaymentRequest,
+    payment_service: PaymentService = Depends(get_payment_service),
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+):
+    """Initiate Khalti final payment for remaining appointment due amount."""
+    result = await db.execute(
+        select(Appointment).where(Appointment.appointment_id == request.appointment_id)
+    )
+    appointment = result.scalar_one_or_none()
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    return_url = f"{settings.APP_DOMAIN}/payment/callback"
+    website_url = settings.APP_DOMAIN
+
+    payment_info = await payment_service.create_final_payment(
+        appointment_id=request.appointment_id,
+        paid_by_user_id=user.sub,
+        amount=request.amount,
+        customer_phone=request.customer_phone,
+        return_url=return_url,
+        website_url=website_url,
+    )
+
+    return KhaltiInitiatePaymentResponse(
+        pidx=payment_info["pidx"],
+        payment_url=payment_info["payment_url"],
+        expires_at=payment_info["expires_at"],
+        expires_in=payment_info["expires_in"],
+    )
+
+
+@router.post("/khalti/final/verify")
+async def verify_khalti_final_payment(
+    pidx: str = Query(..., description="Khalti payment identifier"),
+    appointment_id: str = Query(..., description="Appointment ID"),
+    payment_service: PaymentService = Depends(get_payment_service),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+):
+    """Verify Khalti final payment and complete appointment payment lifecycle."""
+    try:
+        payment = await payment_service.verify_and_complete_final_payment(
+            pidx=pidx,
+            appointment_id=appointment_id,
+        )
+
+        return {
+            "status": "success",
+            "message": "Final payment verified and appointment completed",
             "payment": PaymentResponseSchema.from_orm(payment),
         }
 
