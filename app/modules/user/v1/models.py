@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from app.modules.doctor.v1.models import Doctor
     from app.modules.file.v1.models import File
     from app.modules.hospital.v1.models import Hospital
+    from app.modules.notification.v1.models import Notification
     from app.modules.patient.v1.models import Patient
 
 
@@ -24,6 +25,7 @@ class User(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(50))
     email: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
+    fcm_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     password: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
     last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
@@ -41,6 +43,9 @@ class User(Base, TimestampMixin):
     )
     patient: Mapped[Optional["Patient"]] = relationship(
         back_populates="user", uselist=False
+    )
+    notifications_received: Mapped[list["Notification"]] = relationship(
+        back_populates="receiver", cascade="all, delete-orphan"
     )
 
     @property

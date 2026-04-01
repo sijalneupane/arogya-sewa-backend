@@ -22,6 +22,7 @@ from app.modules.doctor.v1 import router as doctor_router
 from app.modules.file.v1 import router as file_router
 from app.modules.hospital.v1 import router as hospital_router
 from app.modules.email.v1 import router as email_router
+from app.modules.notification.v1 import router as notification_router
 from app.modules.payment.v1 import router as payment_router
 from app.modules.user.v1 import router as user_router
 
@@ -109,3 +110,4 @@ app.include_router(changed_time_router.router, prefix=settings.API_V1_STR)
 app.include_router(payment_router.router, prefix=settings.API_V1_STR)
 app.include_router(file_router.router, prefix=settings.API_V1_STR)
 app.include_router(email_router.router, prefix=settings.API_V1_STR)
+app.include_router(notification_router.router, prefix=settings.API_V1_STR)

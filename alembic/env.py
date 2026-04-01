@@ -22,6 +22,7 @@ from app.modules.department.v1.models import Department
 from app.modules.doctor.v1.models import Doctor
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital
+from app.modules.notification.v1.models import Notification
 from app.modules.payment.v1.models import Payment
 from app.modules.patient.v1.models import Patient
 from app.modules.user.v1.models import User
