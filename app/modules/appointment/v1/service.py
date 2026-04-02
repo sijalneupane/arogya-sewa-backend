@@ -1,3 +1,4 @@
+import logging
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -7,14 +8,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
+from app.common.enums.notification_type_enum import NotificationTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.models import Appointment
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
 from app.modules.hospital.v1.models import Hospital
+from app.modules.notification.v1.service import send_notification
 from app.modules.patient.v1.models import Patient
 from app.modules.user.v1.models import User
+
+logger = logging.getLogger(__name__)
 
 
 async def validate_availability_for_booking(
@@ -131,6 +136,46 @@ async def create_appointment(
     appointment_with_relations = await get_appointment_by_id(
         db, appointment.appointment_id
     )
+
+    if appointment_with_relations:
+        try:
+            doctor_user = appointment_with_relations.doctor.user
+            patient_user = appointment_with_relations.patient.user
+            if doctor_user and patient_user:
+                appointment_date = (
+                    appointment_with_relations.availability.start_date_time.strftime(
+                        "%Y-%m-%d"
+                    )
+                )
+                appointment_time = (
+                    appointment_with_relations.availability.start_date_time.strftime(
+                        "%I:%M %p"
+                    )
+                )
+                await send_notification(
+                    db=db,
+                    receiver_user_id=doctor_user.id,
+                    notification_type=NotificationTypeEnum.APPOINTMENT,
+                    title="New Appointment Received",
+                    body=(
+                        f"You have received a new appointment from {patient_user.name} "
+                        f"on {appointment_date} at {appointment_time}."
+                    ),
+                    notification_data={
+                        "appointment_id": appointment_with_relations.appointment_id,
+                        "doctor_id": appointment_with_relations.doctor_id,
+                        "patient_id": appointment_with_relations.patient_id,
+                        "appointment_date": appointment_date,
+                        "appointment_time": appointment_time,
+                    },
+                )
+        except Exception as exc:
+            logger.warning(
+                "Appointment created but doctor notification failed for appointment %s: %s",
+                appointment_with_relations.appointment_id,
+                str(exc),
+            )
+
     return appointment_with_relations
 
 

@@ -1,3 +1,4 @@
+import logging
 from typing import Optional
 
 from fastapi import HTTPException
@@ -5,14 +6,18 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.notification_type_enum import NotificationTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
 from app.modules.appointment.v1.models import Appointment
 from app.modules.doctor.v1.models import Doctor
 from app.modules.hospital.v1.models import Hospital
+from app.modules.notification.v1.service import send_notification
 from app.modules.patient.v1.models import Patient
 from app.modules.user.v1.models import User
+
+logger = logging.getLogger(__name__)
 
 
 async def can_user_view_changed_time(
@@ -182,6 +187,36 @@ async def create_changed_time(
     await db.commit()
     await db.refresh(changed_time)
 
+    try:
+        patient_result = await db.execute(
+            select(Patient)
+            .options(selectinload(Patient.user))
+            .where(Patient.patient_id == appointment.patient_id)
+        )
+        patient = patient_result.scalar_one_or_none()
+        if patient and patient.user:
+            await send_notification(
+                db=db,
+                receiver_user_id=patient.user.id,
+                notification_type=NotificationTypeEnum.APPOINTMENT,
+                title="Appointment Time Changed",
+                body=(
+                    f"Your appointment has been rescheduled to {start_date_time.strftime('%Y-%m-%d %I:%M %p')}."
+                ),
+                notification_data={
+                    "appointment_id": appointment_id,
+                    "changed_time_id": changed_time_id,
+                    "new_start_date_time": start_date_time.isoformat(),
+                    "new_end_date_time": end_date_time.isoformat(),
+                },
+            )
+    except Exception as exc:
+        logger.warning(
+            "Appointment time change saved but patient notification failed for appointment %s: %s",
+            appointment_id,
+            str(exc),
+        )
+
     # Reload with changed_by relationship to avoid lazy loading issues
     changed_time_with_relations = await get_changed_time_by_id(db, changed_time_id)
     return changed_time_with_relations
@@ -256,6 +291,43 @@ async def update_changed_time(
 
     await db.commit()
     await db.refresh(changed_time)
+
+    try:
+        appointment_result = await db.execute(
+            select(Appointment).where(
+                Appointment.appointment_id == changed_time.appointment_id
+            )
+        )
+        appointment = appointment_result.scalar_one_or_none()
+        if appointment:
+            patient_result = await db.execute(
+                select(Patient)
+                .options(selectinload(Patient.user))
+                .where(Patient.patient_id == appointment.patient_id)
+            )
+            patient = patient_result.scalar_one_or_none()
+            if patient and patient.user:
+                await send_notification(
+                    db=db,
+                    receiver_user_id=patient.user.id,
+                    notification_type=NotificationTypeEnum.APPOINTMENT,
+                    title="Appointment Time Updated",
+                    body=(
+                        f"Your appointment time has been updated to {changed_time.start_date_time.strftime('%Y-%m-%d %I:%M %p')}."
+                    ),
+                    notification_data={
+                        "appointment_id": appointment.appointment_id,
+                        "changed_time_id": changed_time.changed_time_id,
+                        "new_start_date_time": changed_time.start_date_time.isoformat(),
+                        "new_end_date_time": changed_time.end_date_time.isoformat(),
+                    },
+                )
+    except Exception as exc:
+        logger.warning(
+            "Changed time updated but patient notification failed for changed_time %s: %s",
+            changed_time_id,
+            str(exc),
+        )
 
     # Reload with relationships to avoid lazy loading issues
     changed_time_with_relations = await get_changed_time_by_id(db, changed_time_id)

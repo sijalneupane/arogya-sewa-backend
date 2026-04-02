@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, time, timedelta, timezone
 from typing import Optional
 
@@ -8,6 +9,7 @@ from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.file_type_enum import FileTypeEnum
+from app.common.enums.notification_type_enum import NotificationTypeEnum
 from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.enums.payment_transaction_status_enum import (
@@ -20,10 +22,14 @@ from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
 from app.modules.file.v1.models import File
 from app.modules.hospital.v1.models import Hospital
+from app.modules.notification.v1.service import send_notification
+from app.modules.patient.v1.models import Patient
 from app.modules.payment.v1.khalti_service import KhaltiGateway, KhaltiGatewayError
 from app.modules.payment.v1.models import Payment
 from app.modules.payment.v1.schemas import PaymentFilterQuery
 from app.modules.user.v1.models import User
+
+logger = logging.getLogger(__name__)
 
 
 def generate_payment_id() -> str:
@@ -274,6 +280,48 @@ class PaymentService:
             )
 
         await self.db.commit()
+
+        try:
+            notification_appointment = await self._get_appointment_or_404(
+                appointment_id
+            )
+            patient_result = await self.db.execute(
+                select(Patient)
+                .options(selectinload(Patient.user))
+                .where(Patient.patient_id == notification_appointment.patient_id)
+            )
+            patient = patient_result.scalar_one_or_none()
+            doctor_result = await self.db.execute(
+                select(Doctor)
+                .options(selectinload(Doctor.user))
+                .where(Doctor.doctor_id == notification_appointment.doctor_id)
+            )
+            doctor = doctor_result.scalar_one_or_none()
+
+            if patient and patient.user and doctor and doctor.user:
+                await send_notification(
+                    db=self.db,
+                    receiver_user_id=patient.user.id,
+                    notification_type=NotificationTypeEnum.PAYMENT,
+                    title="Appointment Verified Successfully",
+                    body=(
+                        f"Your appointment with Dr. {doctor.user.name} has been "
+                        f"verified successfully."
+                    ),
+                    notification_data={
+                        "appointment_id": notification_appointment.appointment_id,
+                        "doctor_id": doctor.doctor_id,
+                        "patient_id": patient.patient_id,
+                        "payment_status": notification_appointment.payment_status.value,
+                    },
+                )
+        except Exception as exc:
+            logger.warning(
+                "Advance payment verified but patient notification failed for appointment %s: %s",
+                appointment_id,
+                str(exc),
+            )
+
         return await self._get_payment_with_user(payment.payment_id)
 
     async def create_final_payment(
@@ -421,6 +469,47 @@ class PaymentService:
             )
 
         await self.db.commit()
+
+        try:
+            notification_appointment = await self._get_appointment_or_404(
+                appointment_id
+            )
+            patient_result = await self.db.execute(
+                select(Patient)
+                .options(selectinload(Patient.user))
+                .where(Patient.patient_id == notification_appointment.patient_id)
+            )
+            patient = patient_result.scalar_one_or_none()
+            doctor_result = await self.db.execute(
+                select(Doctor)
+                .options(selectinload(Doctor.user))
+                .where(Doctor.doctor_id == notification_appointment.doctor_id)
+            )
+            doctor = doctor_result.scalar_one_or_none()
+
+            if patient and patient.user and doctor and doctor.user:
+                await send_notification(
+                    db=self.db,
+                    receiver_user_id=patient.user.id,
+                    notification_type=NotificationTypeEnum.PAYMENT,
+                    title="Appointment Payment Verified",
+                    body=(
+                        f"Your final payment for the appointment with Dr. {doctor.user.name} has been verified successfully."
+                    ),
+                    notification_data={
+                        "appointment_id": notification_appointment.appointment_id,
+                        "doctor_id": doctor.doctor_id,
+                        "patient_id": patient.patient_id,
+                        "payment_status": notification_appointment.payment_status.value,
+                    },
+                )
+        except Exception as exc:
+            logger.warning(
+                "Final payment verified but patient notification failed for appointment %s: %s",
+                appointment_id,
+                str(exc),
+            )
+
         return await self._get_payment_with_user(payment.payment_id)
 
     async def record_cash_payment(
