@@ -39,7 +39,7 @@ def create_refresh_token(data: dict):
 async def get_current_user(
     request: Request,
     token: str = Depends(oauth2),
-)-> JwtPayload:
+) -> JwtPayload:
     auth_header = request.headers.get("authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="No authentication token provided")
@@ -50,14 +50,14 @@ async def get_current_user(
         payload = jwt.decode(
             token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
         )
-        print("Decoded JWT payload:", payload)
+        # print("Decoded JWT payload:", payload)
 
         # Try to validate the payload, but handle validation errors gracefully
         try:
             # Remove exp field for validation as it's added by JWT library
             validation_payload = {k: v for k, v in payload.items() if k != "exp"}
             validated_payload = JwtPayload.model_validate(validation_payload)
-            print("Successfully validated payload:", validated_payload)
+            # print("Successfully validated payload:", validated_payload)
         except Exception as validation_error:
             print(f"Payload validation warning (continuing anyway): {validation_error}")
             # Continue with the raw payload if validation fails
