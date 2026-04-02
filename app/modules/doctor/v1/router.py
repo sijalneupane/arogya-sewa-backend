@@ -36,30 +36,10 @@ from app.modules.doctor.v1.service import (
     update_doctor,
     # upgrade_user_to_doctor,
 )
-from app.modules.email.v1.mailgun_service import MailgunGateway
+from app.modules.email.v1.email_utils import send_doctor_creation_email
+from app.modules.hospital.v1.service import get_hospital_by_admin_id
 
 logger = logging.getLogger(__name__)
-
-
-async def _send_doctor_account_created_email(
-    *,
-    service: MailgunGateway,
-    doctor_name: str,
-    doctor_email: str,
-) -> None:
-    """Send a confirmation email to the newly created doctor account."""
-    await service.send_text_email(
-        to=[doctor_email],
-        subject="Your doctor account has been created",
-        text=(
-            f"Hello Dr. {doctor_name},\n\n"
-            "Your doctor account has been created successfully on Arogya Sewa.\n"
-            "You can now sign in and complete your profile details if needed.\n\n"
-            "Thank you,\n"
-            "Arogya Sewa Team"
-        ),
-    )
-
 
 router = APIRouter(
     prefix="/doctors",
@@ -92,14 +72,26 @@ async def create_new_doctor(
 
     try:
         mailgun_service = get_mailgun_service()
-        await _send_doctor_account_created_email(
+
+        # Get hospital name for email
+        hospital = await get_hospital_by_admin_id(db, user.sub)
+        hospital_name = hospital.name if hospital else None
+
+        # Get department name if available
+        department_name = None
+        if created_doctor.department:
+            department_name = created_doctor.department.name
+
+        await send_doctor_creation_email(
             service=mailgun_service,
             doctor_name=data.user.name,
             doctor_email=data.user.email,
+            department=department_name,
+            hospital_name=hospital_name,
         )
     except Exception as exc:
         logger.warning(
-            "Doctor account created but success email could not be sent to %s: %s",
+            "Doctor account created but welcome email could not be sent to %s: %s",
             data.user.email,
             str(exc),
         )

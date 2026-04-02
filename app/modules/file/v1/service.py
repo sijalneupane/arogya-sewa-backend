@@ -84,7 +84,9 @@ async def update_file(
         raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
 
 
-async def delete_file(db: AsyncSession, file_ids: str | list[str]):
+async def delete_file(
+    db: AsyncSession, file_ids: str | list[str], auto_commit: bool = True
+):
     try:
         ids = file_ids if isinstance(file_ids, list) else [file_ids]
 
@@ -116,7 +118,8 @@ async def delete_file(db: AsyncSession, file_ids: str | list[str]):
         for file in files:
             await db.delete(file)
 
-        await db.commit()
+        if auto_commit:
+            await db.commit()
 
         return {"message": "File(s) deleted successfully", "deletedIds": ids}
 

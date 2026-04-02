@@ -109,11 +109,21 @@ class PaymentService:
         await self.db.commit()
         raise HTTPException(status_code=400, detail=reason)
 
+    def _ensure_due_exists_for_settlement(self, appointment: Appointment) -> float:
+        """Return normalized due amount and fail if there is nothing left to settle."""
+        due_amount = self._round_money(appointment.due_amount)
+        if due_amount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No due amount left for final settlement",
+            )
+        return due_amount
+
     async def create_advance_payment(
         self,
         appointment_id: str,
         paid_by_user_id: str,
-        amount: float,
+        amount_paisa: int,
         customer_phone: str,
         return_url: str,
         website_url: str,
@@ -141,18 +151,19 @@ class PaymentService:
         expected_advance_amount = self._round_money(
             doctor.booking_fee * (self.advance_percentage / 100)
         )
-        requested_amount = self._round_money(amount)
+        expected_advance_amount_paisa = int(round(expected_advance_amount * 100))
+        requested_amount_paisa = int(amount_paisa)
 
-        if requested_amount != expected_advance_amount:
+        if requested_amount_paisa != expected_advance_amount_paisa:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "Invalid advance amount. "
-                    f"Expected {expected_advance_amount}, got {requested_amount}."
+                    "Invalid advance amount in paisa. "
+                    f"Expected {expected_advance_amount_paisa}, got {requested_amount_paisa}."
                 ),
             )
 
-        advance_amount_paisa = int(expected_advance_amount * 100)
+        advance_amount_paisa = expected_advance_amount_paisa
         payment_id = generate_payment_id()
 
         try:
@@ -226,12 +237,16 @@ class PaymentService:
                 status_code=400,
                 detail="This payment is not a valid advance payment",
             )
-
+        print(
+            "-----Advance payment verification response from Khalti:", khalti_response
+        )
+        print("-----Advance payment status from Khalti:", status)
         if status == "Completed":
             payment.status = PaymentTransactionStatusEnum.SUCCESS
             payment.transaction_id = khalti_response.get("transaction_id")
             payment.paid_at = datetime.now(timezone.utc)
             appointment.payment_status = PaymentStatusEnum.PARTIAL
+            appointment.status = AppointmentStatusEnum.CONFIRMED
             appointment.paid_amount = self._round_money(payment.amount)
             appointment.due_amount = self._round_money(
                 appointment.total_amount - appointment.paid_amount
@@ -265,7 +280,7 @@ class PaymentService:
         self,
         appointment_id: str,
         paid_by_user_id: str,
-        amount: float,
+        amount_paisa: int,
         customer_phone: str,
         return_url: str,
         website_url: str,
@@ -279,21 +294,20 @@ class PaymentService:
                 detail="Final payment requires a successful advance payment",
             )
 
-        remaining_due = self._round_money(
-            appointment.total_amount - appointment.paid_amount
-        )
-        requested_amount = self._round_money(amount)
+        remaining_due = self._ensure_due_exists_for_settlement(appointment)
+        expected_final_amount_paisa = int(round(remaining_due * 100))
+        requested_amount_paisa = int(amount_paisa)
 
-        if requested_amount != remaining_due:
+        if requested_amount_paisa != expected_final_amount_paisa:
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    "Invalid final payment amount. "
-                    f"Expected {remaining_due}, got {requested_amount}."
+                    "Invalid final payment amount in paisa. "
+                    f"Expected {expected_final_amount_paisa}, got {requested_amount_paisa}."
                 ),
             )
 
-        final_amount_paisa = int(remaining_due * 100)
+        final_amount_paisa = expected_final_amount_paisa
         payment_id = generate_payment_id()
 
         try:
@@ -359,9 +373,7 @@ class PaymentService:
             )
 
         appointment = await self._get_appointment_or_404(appointment_id)
-        remaining_due = self._round_money(
-            appointment.total_amount - appointment.paid_amount
-        )
+        remaining_due = self._ensure_due_exists_for_settlement(appointment)
 
         if self._round_money(payment.amount) != remaining_due:
             raise HTTPException(
@@ -427,9 +439,7 @@ class PaymentService:
                 detail="Cash final payment requires a successful advance payment",
             )
 
-        remaining_due = self._round_money(
-            appointment.total_amount - appointment.paid_amount
-        )
+        remaining_due = self._ensure_due_exists_for_settlement(appointment)
         requested_amount = self._round_money(amount)
 
         if requested_amount != remaining_due:

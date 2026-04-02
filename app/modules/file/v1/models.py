@@ -37,5 +37,7 @@ class File(Base, TimestampMixin):
         ForeignKey("hospital.hospital_id"), nullable=True
     )
     hospital: Mapped[Optional["Hospital"]] = relationship(back_populates="files")
-    user_id: Mapped[str] = mapped_column(ForeignKey("user.id"), nullable=False)
-    user: Mapped["User"] = relationship(back_populates="files")  # type
+    user_id: Mapped[Optional[str]] = mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    user: Mapped[Optional["User"]] = relationship(back_populates="files")  # type

@@ -1,16 +1,18 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.configuration.mailgun_config import get_mailgun_service
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import LoginData, LoginResponse
 from app.modules.auth.v1.service import (
     login_user,
-    signup_doctor,
     signup_patient,
     signup_super_admin,
 )
+from app.modules.email.v1.email_utils import send_patient_signup_email
 from app.modules.user.v1.schema import (
-    DoctorSignupSchema,
     PatientSignupSchema,
     SignupResponse,
     SuperAdminSignupSchema,
@@ -18,6 +20,7 @@ from app.modules.user.v1.schema import (
 )
 from app.modules.user.v1.schema import UserLogin as LoginSchema
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
@@ -36,6 +39,18 @@ async def signup_patient_route(
         gender=data.gender,
         blood_group=data.blood_group,
     )
+
+    # Send welcome email to patient
+    try:
+        mailgun_service = get_mailgun_service()
+        await send_patient_signup_email(
+            service=mailgun_service,
+            patient_name=user.name,
+            patient_email=user.email,
+        )
+    except Exception as exc:
+        logger.warning(f"Failed to send patient signup email: {exc}")
+
     return SignupResponse(
         message="Patient registered successfully",
         data=UserResponse.model_validate(user),

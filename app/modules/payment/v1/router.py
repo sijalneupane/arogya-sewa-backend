@@ -1,3 +1,4 @@
+import logging
 import math
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,10 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
 from app.core.config import settings
+from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.appointment.v1.models import Appointment
+from app.modules.appointment.v1.service import get_appointment_by_id
 from app.modules.auth.v1.schemas import JwtPayload
+from app.modules.email.v1.email_utils import send_appointment_payment_confirmed_email
 from app.modules.payment.v1.khalti_service import KhaltiGateway, get_khalti_gateway
 from app.modules.payment.v1.schemas import (
     CashPaymentRecordRequest,
@@ -25,6 +29,7 @@ from app.modules.payment.v1.service import (
     get_advance_percentage,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/payments", tags=["Payments"])
 
 
@@ -95,6 +100,7 @@ async def verify_khalti_advance_payment(
     pidx: str = Query(..., description="Khalti payment identifier"),
     appointment_id: str = Query(..., description="Appointment ID"),
     payment_service: PaymentService = Depends(get_payment_service),
+    db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
 ):
@@ -105,13 +111,104 @@ async def verify_khalti_advance_payment(
     1. Verifies payment status with Khalti
     2. Updates payment record with transaction details
     3. Updates appointment to "Partial" payment status
-    4. Returns payment confirmation
+    4. Sends payment confirmation emails
+    5. Returns payment confirmation
     """
     try:
         payment = await payment_service.verify_and_complete_advance_payment(
             pidx=pidx,
             appointment_id=appointment_id,
         )
+
+        # Send payment confirmation emails
+        try:
+            appointment = await get_appointment_by_id(db, appointment_id)
+            if appointment and appointment.doctor and appointment.patient:
+                mailgun_service = get_mailgun_service()
+
+                doctor_name = (
+                    appointment.doctor.user.name
+                    if appointment.doctor.user
+                    else "Doctor"
+                )
+                patient_name = (
+                    appointment.patient.user.name
+                    if appointment.patient.user
+                    else "Patient"
+                )
+
+                # Format appointment date and time
+                appointment_date = (
+                    appointment.availability.start_date_time.strftime("%B %d, %Y")
+                    if appointment.availability
+                    else "TBD"
+                )
+                appointment_time = (
+                    appointment.availability.start_date_time.strftime("%I:%M %p")
+                    if appointment.availability
+                    else "TBD"
+                )
+
+                # Get hospital name
+                hospital_name = "Arogya Sewa"
+                if appointment.doctor.hospital:
+                    hospital_name = appointment.doctor.hospital.name
+
+                remaining_due = (
+                    appointment.due_amount if appointment.due_amount > 0 else None
+                )
+
+                # Send email to patient
+                await send_appointment_payment_confirmed_email(
+                    service=mailgun_service,
+                    recipient_name=patient_name,
+                    recipient_email=appointment.patient.user.email,
+                    recipient_type="patient",
+                    patient_name=patient_name,
+                    doctor_name=doctor_name,
+                    hospital_name=hospital_name,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    appointment_id=appointment_id,
+                    paid_amount=payment.amount,
+                    remaining_due=remaining_due,
+                )
+
+                # Send email to doctor
+                await send_appointment_payment_confirmed_email(
+                    service=mailgun_service,
+                    recipient_name=doctor_name,
+                    recipient_email=appointment.doctor.user.email,
+                    recipient_type="doctor",
+                    patient_name=patient_name,
+                    doctor_name=doctor_name,
+                    hospital_name=hospital_name,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    appointment_id=appointment_id,
+                    paid_amount=payment.amount,
+                    remaining_due=remaining_due,
+                )
+
+                # Send email to hospital admin if hospital exists
+                if appointment.doctor.hospital and appointment.doctor.hospital.admin:
+                    admin = appointment.doctor.hospital.admin
+                    await send_appointment_payment_confirmed_email(
+                        service=mailgun_service,
+                        recipient_name=admin.name,
+                        recipient_email=admin.email,
+                        recipient_type="hospital_admin",
+                        patient_name=patient_name,
+                        doctor_name=doctor_name,
+                        hospital_name=hospital_name,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                        appointment_id=appointment_id,
+                        paid_amount=payment.amount,
+                        remaining_due=remaining_due,
+                    )
+        except Exception as email_exc:
+            logger.warning(f"Failed to send payment confirmation emails: {email_exc}")
 
         return {
             "status": "success",
@@ -167,6 +264,7 @@ async def verify_khalti_final_payment(
     pidx: str = Query(..., description="Khalti payment identifier"),
     appointment_id: str = Query(..., description="Appointment ID"),
     payment_service: PaymentService = Depends(get_payment_service),
+    db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
 ):
@@ -176,6 +274,94 @@ async def verify_khalti_final_payment(
             pidx=pidx,
             appointment_id=appointment_id,
         )
+
+        # Send payment completion emails
+        try:
+            appointment = await get_appointment_by_id(db, appointment_id)
+            if appointment and appointment.doctor and appointment.patient:
+                mailgun_service = get_mailgun_service()
+
+                doctor_name = (
+                    appointment.doctor.user.name
+                    if appointment.doctor.user
+                    else "Doctor"
+                )
+                patient_name = (
+                    appointment.patient.user.name
+                    if appointment.patient.user
+                    else "Patient"
+                )
+
+                # Format appointment date and time
+                appointment_date = (
+                    appointment.availability.start_date_time.strftime("%B %d, %Y")
+                    if appointment.availability
+                    else "TBD"
+                )
+                appointment_time = (
+                    appointment.availability.start_date_time.strftime("%I:%M %p")
+                    if appointment.availability
+                    else "TBD"
+                )
+
+                # Get hospital name
+                hospital_name = "Arogya Sewa"
+                if appointment.doctor.hospital:
+                    hospital_name = appointment.doctor.hospital.name
+
+                # Send email to patient (full payment completed)
+                await send_appointment_payment_confirmed_email(
+                    service=mailgun_service,
+                    recipient_name=patient_name,
+                    recipient_email=appointment.patient.user.email,
+                    recipient_type="patient",
+                    patient_name=patient_name,
+                    doctor_name=doctor_name,
+                    hospital_name=hospital_name,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    appointment_id=appointment_id,
+                    paid_amount=payment.amount,
+                    remaining_due=0,
+                )
+
+                # Send email to doctor
+                await send_appointment_payment_confirmed_email(
+                    service=mailgun_service,
+                    recipient_name=doctor_name,
+                    recipient_email=appointment.doctor.user.email,
+                    recipient_type="doctor",
+                    patient_name=patient_name,
+                    doctor_name=doctor_name,
+                    hospital_name=hospital_name,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    appointment_id=appointment_id,
+                    paid_amount=payment.amount,
+                    remaining_due=0,
+                )
+
+                # Send email to hospital admin if hospital exists
+                if appointment.doctor.hospital and appointment.doctor.hospital.admin:
+                    admin = appointment.doctor.hospital.admin
+                    await send_appointment_payment_confirmed_email(
+                        service=mailgun_service,
+                        recipient_name=admin.name,
+                        recipient_email=admin.email,
+                        recipient_type="hospital_admin",
+                        patient_name=patient_name,
+                        doctor_name=doctor_name,
+                        hospital_name=hospital_name,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                        appointment_id=appointment_id,
+                        paid_amount=payment.amount,
+                        remaining_due=0,
+                    )
+        except Exception as email_exc:
+            logger.warning(
+                f"Failed to send final payment confirmation emails: {email_exc}"
+            )
 
         return {
             "status": "success",

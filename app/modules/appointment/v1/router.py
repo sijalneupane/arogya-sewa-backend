@@ -1,3 +1,4 @@
+import logging
 from datetime import date
 from math import ceil
 from typing import Optional
@@ -10,6 +11,7 @@ from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.common.schema.pagination import PaginationMeta
 from app.core.authorization import authorize
+from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.appointment.v1.schema import (
@@ -31,8 +33,10 @@ from app.modules.appointment.v1.service import (
 )
 from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.doctor.v1.models import Doctor
+from app.modules.email.v1.email_utils import send_appointment_booked_email
 from app.modules.patient.v1.models import Patient
 
+logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/appointments",
     tags=["Appointments"],
@@ -73,6 +77,91 @@ async def book_appointment(
         reason=data.reason,
         notes=data.notes,
     )
+
+    # Send appointment booking emails to patient, doctor, and hospital admin
+    try:
+        # Get full appointment details with relationships
+        full_appointment = await get_appointment_by_id(db, appointment.appointment_id)
+
+        if full_appointment and full_appointment.doctor and full_appointment.patient:
+            mailgun_service = get_mailgun_service()
+
+            doctor_name = (
+                full_appointment.doctor.user.name
+                if full_appointment.doctor.user
+                else "Doctor"
+            )
+            patient_name = (
+                full_appointment.patient.user.name
+                if full_appointment.patient.user
+                else "Patient"
+            )
+
+            # Format appointment date and time
+            appointment_date = (
+                full_appointment.availability.start_date_time.strftime("%B %d, %Y")
+                if full_appointment.availability
+                else "TBD"
+            )
+            appointment_time = (
+                full_appointment.availability.start_date_time.strftime("%I:%M %p")
+                if full_appointment.availability
+                else "TBD"
+            )
+
+            # Get hospital name
+            hospital_name = "Arogya Sewa"
+            if full_appointment.doctor.hospital:
+                hospital_name = full_appointment.doctor.hospital.name
+
+            # Send email to patient
+            await send_appointment_booked_email(
+                service=mailgun_service,
+                recipient_name=patient_name,
+                recipient_email=full_appointment.patient.user.email,
+                recipient_type="patient",
+                patient_name=patient_name,
+                doctor_name=doctor_name,
+                hospital_name=hospital_name,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                appointment_id=appointment.appointment_id,
+            )
+
+            # Send email to doctor
+            await send_appointment_booked_email(
+                service=mailgun_service,
+                recipient_name=doctor_name,
+                recipient_email=full_appointment.doctor.user.email,
+                recipient_type="doctor",
+                patient_name=patient_name,
+                doctor_name=doctor_name,
+                hospital_name=hospital_name,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                appointment_id=appointment.appointment_id,
+            )
+
+            # Send email to hospital admin if hospital exists
+            if (
+                full_appointment.doctor.hospital
+                and full_appointment.doctor.hospital.admin
+            ):
+                admin = full_appointment.doctor.hospital.admin
+                await send_appointment_booked_email(
+                    service=mailgun_service,
+                    recipient_name=admin.name,
+                    recipient_email=admin.email,
+                    recipient_type="hospital_admin",
+                    patient_name=patient_name,
+                    doctor_name=doctor_name,
+                    hospital_name=hospital_name,
+                    appointment_date=appointment_date,
+                    appointment_time=appointment_time,
+                    appointment_id=appointment.appointment_id,
+                )
+    except Exception as exc:
+        logger.warning(f"Failed to send appointment booking emails: {exc}")
 
     # Use Pydantic schema validation instead of format_appointment_detail
     from app.modules.appointment.v1.schema import AppointmentDetailResponseSchema

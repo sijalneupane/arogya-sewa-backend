@@ -1,11 +1,15 @@
+import logging
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.schema.pagination import PaginatedResponse, PaginationMeta
 from app.core.authorization import authorize
+from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
+from app.modules.email.v1.email_utils import send_hospital_creation_email
 from app.modules.hospital.v1.schema import (
     AdminHospitalDetailResponseSchema,
     AdminHospitalResponseSchema,
@@ -27,6 +31,7 @@ from app.modules.hospital.v1.service import (
     update_hospital,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix="/hospital",
     tags=["Hospitals"],
@@ -55,6 +60,26 @@ async def create_hospital(
         logo_img_id=data.logo_img_id,
         banner_img_id=data.banner_img_id,
     )
+
+    # Send welcome email to hospital admin with details
+    try:
+        mailgun_service = get_mailgun_service()
+        contact_str = ", ".join(data.contact_number) if data.contact_number else "N/A"
+        await send_hospital_creation_email(
+            service=mailgun_service,
+            admin_name=data.admin_details.name,
+            admin_email=data.admin_details.email,
+            hospital_name=data.name,
+            hospital_location=data.location,
+            contact_number=contact_str,
+        )
+    except Exception as exc:
+        logger.warning(
+            "Hospital created but welcome email could not be sent to admin %s: %s",
+            data.admin_details.email,
+            str(exc),
+        )
+
     response = HospitalResponseSchema.model_validate(created_hospital)
     return {"message": "Hospital created successfully", "data": response}
 
