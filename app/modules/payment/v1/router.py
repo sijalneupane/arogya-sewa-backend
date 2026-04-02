@@ -76,7 +76,7 @@ async def initiate_khalti_advance_payment(
     payment_info = await payment_service.create_advance_payment(
         appointment_id=request.appointment_id,
         paid_by_user_id=user.sub,
-        amount=request.amount,
+        amount_paisa=request.amount_paisa,
         customer_phone=request.customer_phone,
         return_url=return_url,
         website_url=website_url,
@@ -148,7 +148,7 @@ async def initiate_khalti_final_payment(
     payment_info = await payment_service.create_final_payment(
         appointment_id=request.appointment_id,
         paid_by_user_id=user.sub,
-        amount=request.amount,
+        amount_paisa=request.amount_paisa,
         customer_phone=request.customer_phone,
         return_url=return_url,
         website_url=website_url,

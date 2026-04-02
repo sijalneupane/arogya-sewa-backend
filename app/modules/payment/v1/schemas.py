@@ -17,7 +17,7 @@ class KhaltiAdvancePaymentRequest(BaseModel):
     appointment_id: str = Field(
         ..., min_length=8, max_length=8, description="Appointment ID"
     )
-    amount: float = Field(..., gt=0, description="Advance amount in rupees")
+    amount_paisa: int = Field(..., gt=0, description="Advance amount in paisa")
     customer_phone: str = Field(..., description="Customer Khalti ID/phone number")
 
 
@@ -27,7 +27,7 @@ class KhaltiFinalPaymentRequest(BaseModel):
     appointment_id: str = Field(
         ..., min_length=8, max_length=8, description="Appointment ID"
     )
-    amount: float = Field(..., gt=0, description="Final payment amount in rupees")
+    amount_paisa: int = Field(..., gt=0, description="Final payment amount in paisa")
     customer_phone: str = Field(..., description="Customer Khalti ID/phone number")
 
 
