@@ -376,7 +376,7 @@ async def get_all_appointments_super_admin(
     if doctor_name:
         if not hospital_name:  # Only join Doctor if not already joined
             query = query.join(Doctor)
-        query = query.join(User, Doctor.user_id == User.user_id)
+        query = query.join(User, Doctor.user_id == User.id)
         conditions.append(User.name.ilike(f"%{doctor_name}%"))
 
     if patient_id:
@@ -389,11 +389,11 @@ async def get_all_appointments_super_admin(
 
             PatientUser = aliased(User)
             query = query.join(Patient).join(
-                PatientUser, Patient.user_id == PatientUser.user_id
+                PatientUser, Patient.user_id == PatientUser.id
             )
             conditions.append(PatientUser.name.ilike(f"%{patient_name}%"))
         else:
-            query = query.join(Patient).join(User, Patient.user_id == User.user_id)
+            query = query.join(Patient).join(User, Patient.user_id == User.id)
             conditions.append(User.name.ilike(f"%{patient_name}%"))
 
     if status:
@@ -733,7 +733,7 @@ async def get_hospital_admin_appointments(
         from sqlalchemy.orm import aliased
 
         DoctorUser = aliased(User)
-        query = query.join(DoctorUser, Doctor.user_id == DoctorUser.user_id)
+        query = query.join(DoctorUser, Doctor.user_id == DoctorUser.id)
         conditions.append(DoctorUser.name.ilike(f"%{doctor_name}%"))
 
     if patient_id:
@@ -746,11 +746,11 @@ async def get_hospital_admin_appointments(
 
             PatientUser = aliased(User)
             query = query.join(Patient).join(
-                PatientUser, Patient.user_id == PatientUser.user_id
+                PatientUser, Patient.user_id == PatientUser.id
             )
             conditions.append(PatientUser.name.ilike(f"%{patient_name}%"))
         else:
-            query = query.join(Patient).join(User, Patient.user_id == User.user_id)
+            query = query.join(Patient).join(User, Patient.user_id == User.id)
             conditions.append(User.name.ilike(f"%{patient_name}%"))
 
     if status:
