@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.role_enum import RoleEnum
+from app.common.enums.file_type_enum import FileTypeEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
@@ -633,57 +634,65 @@ async def delete_doctor(
 ):
     """Delete a doctor."""
     try:
-        # Get the doctor first
-        result = await db.execute(
-            select(Doctor)
-            .options(
-                selectinload(Doctor.user), selectinload(Doctor.license_certificate)
+        transaction_context = db.begin_nested() if db.in_transaction() else db.begin()
+        async with transaction_context:
+            # Get the doctor first
+            result = await db.execute(
+                select(Doctor)
+                .options(
+                    selectinload(Doctor.user), selectinload(Doctor.license_certificate)
+                )
+                .where(Doctor.doctor_id == doctor_id)
             )
-            .where(Doctor.doctor_id == doctor_id)
-        )
-        doctor = result.scalar_one_or_none()
-        if not doctor:
-            raise HTTPException(status_code=404, detail="Doctor not found")
+            doctor = result.scalar_one_or_none()
+            if not doctor:
+                raise HTTPException(status_code=404, detail="Doctor not found")
 
-        # Authorization check
-        if role == RoleEnum.SUPER_ADMIN:
-            # Super admin can delete any doctor
-            pass
-        elif role != RoleEnum.HOSPITAL_ADMIN:
-            # Hospital admin can delete doctors in their hospital
-            # if not doctor.hospital_id:
-            #     raise HTTPException(
-            #         status_code=403,
-            #         detail="Access denied. Doctor is not associated with any hospital.",
-            #     )
-            # Get admin's hospital
-            # admin_hospital_result = await db.execute(
-            #     select(Hospital).where(Hospital.admin_id == current_user_id)
-            # )
-            # admin_hospital = admin_hospital_result.scalar_one_or_none()
-            # if not admin_hospital or admin_hospital.hospital_id != doctor.hospital_id:
-            #     raise HTTPException(
-            #         status_code=403,
-            #         detail="Access denied. You can only delete doctors in your hospital.",
-            #     )
-            # else:
-            raise HTTPException(
-                status_code=403,
-                detail="Access denied. Insufficient permissions to delete doctor.",
+            # Authorization check
+            if role == RoleEnum.SUPER_ADMIN:
+                # Super admin can delete any doctor
+                pass
+            elif role != RoleEnum.HOSPITAL_ADMIN:
+                raise HTTPException(
+                    status_code=403,
+                    detail="Access denied. Insufficient permissions to delete doctor.",
+                )
+
+            doctor_user = doctor.user
+            license_file_id = (
+                doctor.license_certificate.file_id
+                if doctor.license_certificate
+                else None
             )
 
-        await db.delete(doctor)
-        if doctor.license_certificate:
-            await delete_file(db, [doctor.license_certificate.file_id])
-        await db.delete(
-            doctor.user
-        )  # Also delete associated user account, call the funitons of user service later
+            await db.delete(doctor)
+            await db.flush()
+
+            if license_file_id:
+                await delete_file(db, [license_file_id], auto_commit=False)
+
+            # Delete user's profile image if it exists
+            profile_files_result = await db.execute(
+                select(File).where(
+                    File.user_id == doctor_user.id,
+                    File.file_type == FileTypeEnum.PROFILE,
+                )
+            )
+            profile_files = profile_files_result.scalars().all()
+            if profile_files:
+                profile_file_ids = [pf.file_id for pf in profile_files]
+                await delete_file(db, profile_file_ids, auto_commit=False)
+
+            await db.delete(doctor_user)
+
         await db.commit()
         return {"message": "Doctor deleted successfully"}
 
-    except HTTPException:
+    except HTTPException as e:
+        print("HTTPException occurred:", e.detail)
         await db.rollback()
         raise
     except Exception as e:
+        print("Unexpected error occurred:", str(e))
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
