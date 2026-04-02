@@ -14,8 +14,12 @@ All models below inherit `TimestampMixin`, which adds:
 - `RoleEnum`: `SUPER_ADMIN`, `HOSPITAL_ADMIN`, `DOCTOR`, `PATIENT`
 - `FileMetaTypeEnum`: `image`, `video`, `pdf`
 - `FileTypeEnum`: `profile`, `license`, `hospital_logo`, `hospital`, `hospital_banner`, `medical_report`, `prescription`, `other`
-- `DoctorStatusEnum`: `Active`, `On Leave`, `On Appointment`, `Inactive`
-- `AppointmentStatusEnum`: `scheduled`, `confirmed`, `inprogress`, `completed`, `cancelled`, `rescheduled`
+- `DoctorStatusEnum`: `Active`, `On Leave`, `Inactive`
+- `AppointmentStatusEnum`: `Pending Payment`, `Confirmed`, `In Progress`, `Completed`, `Cancelled`, `Rescheduled`
+- `PaymentStatusEnum`: `Unpaid`, `Partial`, `Paid`, `Refunded`
+- `PaymentMethodEnum`: `Khalti`, `Esewa`, `Cash`
+- `PaymentTransactionStatusEnum`: `Pending`, `Success`, `Failed`, `Refunded`
+- `NotificationTypeEnum`: `System`, `Appointment`, `Payment`, `Reminder`, `Promotion`
 
 ## Model: Role (`role`)
 
@@ -53,9 +57,10 @@ Relationships:
 | `name` | `String(50)` | `nullable=False` |
 | `email` | `String(100)` | `unique=True`, `index=True`, `nullable=False` |
 | `phone_number` | `String(20)` | `nullable=False` |
+| `fcm_token` | `String(255)` | `nullable=True` |
 | `password` | `VARCHAR(255)` | `nullable=False` |
 | `last_login` | `DateTime` | `nullable=True` |
-| `is_active` | `Boolean` (inferred) | `nullable=False`, `default=True` |
+| `is_active` | `Boolean` | `nullable=False`, `default=True` |
 | `role_id` | `String(8)` | `ForeignKey(role.id)`, `nullable=False` |
 | `created_at` | `DateTime(timezone=True)` | inherited |
 | `updated_at` | `DateTime(timezone=True)` | inherited |
@@ -66,6 +71,7 @@ Relationships:
 - `hospital` -> `Hospital` (one-to-one, `uselist=False`, `back_populates=admin`)
 - `doctor` -> `Doctor` (one-to-one, `uselist=False`, `back_populates=user`)
 - `patient` -> `Patient` (one-to-one, `uselist=False`, `back_populates=user`)
+- `notifications_received` -> `Notification` (one-to-many, `back_populates=receiver`, `cascade=all, delete-orphan`)
 
 Derived property:
 - `profile_image`: returns first file in `files` where `file_type == FileTypeEnum.PROFILE`
@@ -134,7 +140,7 @@ Relationships:
 | `experience` | `String(255)` | `nullable=False`, `server_default="No experience."` |
 | `status` | `Enum(DoctorStatusEnum)` | `nullable=False`, `default=DoctorStatusEnum.ACTIVE` |
 | `bio` | `Text` | `nullable=True` |
-| `booking_fee` | `Float` (inferred) | `nullable=False`, `default=0.0` |
+| `booking_fee` | `Float` | `nullable=False`, `default=0.0` |
 | `license_certificate_id` | `String(100)` | `ForeignKey(file.file_id)`, `unique=True`, `nullable=True` |
 | `user_id` | `String(8)` | `ForeignKey(user.id)`, `unique=True`, `nullable=False` |
 | `hospital_id` | `String(8)` | `ForeignKey(hospital.hospital_id)`, `nullable=True` |
@@ -191,7 +197,12 @@ Relationships:
 | `booked_by_user_id` | `String(8)` | `ForeignKey(user.id, ondelete=CASCADE)`, `index=True`, `nullable=False` |
 | `reason` | `Text` | `nullable=True` |
 | `notes` | `Text` | `nullable=True` |
-| `status` | `Enum(AppointmentStatusEnum, name=appointment_status_enum)` | `nullable=False`, `default=SCHEDULED`, `server_default='scheduled'`, `index=True` |
+| `total_amount` | `Float` | `nullable=False` |
+| `paid_amount` | `Float` | `nullable=False`, `default=0` |
+| `due_amount` | `Float` | `nullable=False`, `default=0` |
+| `advance_fee` | `Float` | `nullable=False`, `default=0` |
+| `payment_status` | `Enum(PaymentStatusEnum, name=payment_status_enum)` | `nullable=False`, `default=UNPAID`, `server_default='Unpaid'` |
+| `status` | `Enum(AppointmentStatusEnum, name=appointment_status_enum)` | `nullable=False`, `default=PENDING_PAYMENT`, `server_default='Pending Payment'`, `index=True` |
 | `created_at` | `DateTime(timezone=True)` | inherited |
 | `updated_at` | `DateTime(timezone=True)` | inherited |
 
@@ -200,6 +211,7 @@ Relationships:
 - `doctor` -> `Doctor` (many-to-one)
 - `availability` -> `Availability` (many-to-one in ORM usage; effectively one-to-one via unique `availability_id`)
 - `booked_by` -> `User` (many-to-one)
+- `payments` -> `Payment` (one-to-many, `back_populates=appointment`, `cascade=all, delete-orphan`)
 - `changed_times` -> `AppointmentChangedTime` (one-to-many, `back_populates=appointment`, `cascade=all, delete-orphan`)
 
 ## Model: AppointmentChangedTime (`appointment_changed_time`)
@@ -219,3 +231,41 @@ Relationships:
 Relationships:
 - `appointment` -> `Appointment` (many-to-one, `back_populates=changed_times`)
 - `changed_by` -> `User` (many-to-one)
+
+## Model: Payment (`payment`)
+
+| Field | Type | Properties |
+|---|---|---|
+| `payment_id` | `String(12)` | `primary_key=True`, `index=True`, `nullable=False` |
+| `appointment_id` | `String(8)` | `ForeignKey(appointment.appointment_id, ondelete=CASCADE)`, `index=True`, `nullable=False` |
+| `paid_by_user_id` | `String` | `ForeignKey(user.id)`, `nullable=False` |
+| `amount` | `Float` | `nullable=False` |
+| `payment_method` | `Enum(PaymentMethodEnum, name=payment_method_enum)` | `nullable=False` |
+| `status` | `Enum(PaymentTransactionStatusEnum, name=payment_transaction_status_enum)` | `nullable=False`, `default=PENDING`, `server_default='Pending'` |
+| `transaction_id` | `String` | `nullable=True` |
+| `gateway_ref` | `String` | `nullable=True` |
+| `remarks` | `Text` | `nullable=True` |
+| `paid_at` | `DateTime(timezone=True)` | `nullable=True` |
+| `created_at` | `DateTime(timezone=True)` | inherited |
+| `updated_at` | `DateTime(timezone=True)` | inherited |
+
+Relationships:
+- `appointment` -> `Appointment` (many-to-one, `back_populates=payments`)
+- `paid_by` -> `User` (many-to-one)
+
+## Model: Notification (`notification`)
+
+| Field | Type | Properties |
+|---|---|---|
+| `notification_id` | `String(12)` | `primary_key=True`, `index=True`, `nullable=False` |
+| `type` | `Enum(NotificationTypeEnum, name=notification_type_enum)` | `nullable=False` |
+| `title` | `String(255)` | `nullable=False` |
+| `body` | `Text` | `nullable=False` |
+| `notification_data` | `JSONB` | `nullable=True` |
+| `has_read` | `Boolean` | `nullable=False`, `default=False`, `server_default='false'` |
+| `receiver_user_id` | `String(8)` | `ForeignKey(user.id, ondelete=CASCADE)`, `index=True`, `nullable=False` |
+| `created_at` | `DateTime(timezone=True)` | inherited |
+| `updated_at` | `DateTime(timezone=True)` | inherited |
+
+Relationships:
+- `receiver` -> `User` (many-to-one, `back_populates=notifications_received`)
