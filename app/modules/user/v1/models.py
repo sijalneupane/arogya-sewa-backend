@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import VARCHAR, ForeignKey, String
@@ -27,6 +28,11 @@ class User(Base, TimestampMixin):
     phone_number: Mapped[str] = mapped_column(String(20), nullable=False)
     fcm_token: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     password: Mapped[str] = mapped_column(VARCHAR(255), nullable=False)
+    otp_code: Mapped[Optional[str]] = mapped_column(String(6), nullable=True)
+    otp_verified: Mapped[bool] = mapped_column(nullable=False, default=False)
+    otp_expiry_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     last_login: Mapped[DateTime] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
     role_id: Mapped[str] = mapped_column(ForeignKey("role.id"), nullable=False)

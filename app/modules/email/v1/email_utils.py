@@ -54,6 +54,49 @@ async def send_patient_signup_email(
     )
 
 
+async def send_password_reset_otp_email(
+    *,
+    service: MailgunGateway,
+    recipient_email: str,
+    otp_code: str,
+) -> None:
+    """Send password reset OTP email."""
+    await service.send_html_email(
+        to=[recipient_email],
+        subject="Password Reset OTP",
+        html=(
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 30px; border-radius: 10px; "
+            "box-shadow: 0 2px 10px rgba(0,0,0,0.1);'>"
+            "<h2 style='color: #333; text-align: center; margin-bottom: 20px;'>"
+            "Password Reset Request</h2>"
+            "<p style='color: #666; font-size: 16px; line-height: 1.5;'>Hello,</p>"
+            "<p style='color: #666; font-size: 16px; line-height: 1.5;'>"
+            "You have requested to reset your password. Please use the following OTP code:</p>"
+            "<div style='text-align: center; margin: 30px 0;'>"
+            f"<span style='background-color: #007bff; color: white; padding: 15px 30px; "
+            f"border-radius: 5px; font-size: 24px; font-weight: bold; letter-spacing: 3px;'>{otp_code}</span>"
+            "</div>"
+            "<p style='color: #666; font-size: 14px; line-height: 1.5;'>"
+            "This OTP will expire in 2 minutes.</p>"
+            "<p style='color: #999; font-size: 12px; margin-top: 30px;'>"
+            "If you did not request this, please ignore this email.</p>"
+            "</div>"
+            "<div style='text-align: center; margin-top: 20px;'>"
+            "<p style='color: #666; font-size: 14px; line-height: 1.5;'>Thank you!</p>"
+            "</div>"
+            "</div>"
+        ),
+        text_fallback=(
+            "Password Reset Request\n\n"
+            f"Your OTP for password reset is: {otp_code}\n"
+            "This OTP will expire in 2 minutes.\n\n"
+            "If you did not request this, please ignore this email."
+        ),
+    )
+
+
 async def send_doctor_creation_email(
     *,
     service: MailgunGateway,

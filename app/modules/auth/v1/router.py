@@ -4,12 +4,26 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.configuration.mailgun_config import get_mailgun_service
+from app.core.security import get_current_user
 from app.db.db import get_db
-from app.modules.auth.v1.schemas import LoginData, LoginResponse
+from app.modules.auth.v1.schemas import (
+    AuthMessageResponse,
+    ChangePasswordRequest,
+    JwtPayload,
+    LoginData,
+    LoginResponse,
+    ResetPasswordRequest,
+    SendPasswordResetOtpRequest,
+    VerifyOtpRequest,
+)
 from app.modules.auth.v1.service import (
     login_user,
+    reset_user_password,
+    send_password_reset_otp,
     signup_patient,
     signup_super_admin,
+    update_user_password,
+    verify_otp,
 )
 from app.modules.email.v1.email_utils import send_patient_signup_email
 from app.modules.user.v1.schema import (
@@ -115,3 +129,47 @@ async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Internal server error" + e.__str__()
         )
+
+
+@router.post("/password/forgot/send-otp", response_model=AuthMessageResponse)
+async def send_password_reset_otp_route(
+    data: SendPasswordResetOtpRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await send_password_reset_otp(db=db, email=str(data.email))
+
+
+@router.post("/password/forgot/verify-otp", response_model=AuthMessageResponse)
+async def verify_otp_route(
+    data: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await verify_otp(db=db, email=str(data.email), otp_code=data.otp_code)
+
+
+@router.post("/password/forgot/reset", response_model=AuthMessageResponse)
+async def reset_password_route(
+    data: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await reset_user_password(
+        db=db,
+        email=str(data.email),
+        password=data.password,
+        confirm_password=data.confirm_password,
+    )
+
+
+@router.post("/password/change", response_model=AuthMessageResponse)
+async def change_password_route(
+    data: ChangePasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+):
+    return await update_user_password(
+        db=db,
+        user_id=current_user.sub,
+        old_password=data.old_password,
+        new_password=data.new_password,
+        confirm_password=data.confirm_password,
+    )
