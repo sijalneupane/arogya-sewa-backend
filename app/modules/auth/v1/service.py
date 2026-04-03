@@ -1,12 +1,14 @@
 from datetime import date, datetime, timedelta, timezone
 import secrets
 
+import jwt
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.common.enums.role_enum import RoleEnum
+from app.core.config import settings
 from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import (
     create_access_token,
@@ -320,3 +322,42 @@ async def update_user_password(
     await db.commit()
 
     return {"message": "Password updated successfully"}
+
+
+async def refresh_user_tokens(db: AsyncSession, refresh_token: str):
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+
+    result = await db.execute(
+        select(User).options(selectinload(User.role)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    access_payload = JwtPayload(
+        sub=user.id,
+        name=user.name,
+        role=user.role.role,
+    )
+    access_token = create_access_token(access_payload)
+    rotated_refresh_token = create_refresh_token({"sub": user.id})
+
+    return {
+        "message": "Token refreshed successfully",
+        "data": {
+            "access_token": access_token,
+            "refresh_token": rotated_refresh_token,
+        },
+    }

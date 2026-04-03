@@ -44,3 +44,17 @@ class ChangePasswordRequest(BaseModel):
     old_password: str = Field(..., min_length=6, max_length=30)
     new_password: str = Field(..., min_length=6, max_length=30)
     confirm_password: str = Field(..., min_length=6, max_length=30)
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+class RefreshTokenData(BaseModel):
+    access_token: str
+    refresh_token: str
+
+
+class RefreshTokenResponse(BaseModel):
+    message: str = "Token refreshed successfully"
+    data: RefreshTokenData

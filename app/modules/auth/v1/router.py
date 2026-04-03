@@ -12,12 +12,15 @@ from app.modules.auth.v1.schemas import (
     JwtPayload,
     LoginData,
     LoginResponse,
+    RefreshTokenRequest,
+    RefreshTokenResponse,
     ResetPasswordRequest,
     SendPasswordResetOtpRequest,
     VerifyOtpRequest,
 )
 from app.modules.auth.v1.service import (
     login_user,
+    refresh_user_tokens,
     reset_user_password,
     send_password_reset_otp,
     signup_patient,
@@ -129,6 +132,14 @@ async def login(data: LoginSchema, db: AsyncSession = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Internal server error" + e.__str__()
         )
+
+
+@router.post("/refresh-token", response_model=RefreshTokenResponse)
+async def refresh_token_route(
+    data: RefreshTokenRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    return await refresh_user_tokens(db=db, refresh_token=data.refresh_token)
 
 
 @router.post("/password/forgot/send-otp", response_model=AuthMessageResponse)
