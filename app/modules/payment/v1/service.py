@@ -15,6 +15,7 @@ from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.common.enums.payment_type_enum import PaymentTypeEnum
 from app.core.config import settings
 from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.models import Appointment
@@ -193,6 +194,7 @@ class PaymentService:
             paid_by_user_id=paid_by_user_id,
             amount=expected_advance_amount,
             payment_method=PaymentMethodEnum.KHALTI,
+            payment_type=PaymentTypeEnum.APPOINTMENT_ADVANCE,
             status=PaymentTransactionStatusEnum.PENDING,
             gateway_ref=khalti_response.get("pidx"),
             remarks=f"{self.advance_percentage}% advance payment",
@@ -379,6 +381,7 @@ class PaymentService:
             paid_by_user_id=paid_by_user_id,
             amount=remaining_due,
             payment_method=PaymentMethodEnum.KHALTI,
+            payment_type=PaymentTypeEnum.APPOINTMENT_CLEAR,
             status=PaymentTransactionStatusEnum.PENDING,
             gateway_ref=khalti_response.get("pidx"),
             remarks="Final payment",
@@ -548,6 +551,7 @@ class PaymentService:
             paid_by_user_id=paid_by_user_id,
             amount=remaining_due,
             payment_method=PaymentMethodEnum.CASH,
+            payment_type=PaymentTypeEnum.APPOINTMENT_CLEAR,
             status=PaymentTransactionStatusEnum.SUCCESS,
             paid_at=datetime.now(timezone.utc),
             remarks=remarks or "Final cash payment",

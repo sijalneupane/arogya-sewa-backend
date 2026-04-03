@@ -7,6 +7,7 @@ from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.common.enums.payment_type_enum import PaymentTypeEnum
 from app.common.schema.pagination import PaginationQuery
 from app.modules.user.v1.schema import UserResponse
 
@@ -65,6 +66,7 @@ class PaymentCreateSchema(BaseModel):
     payment_method: PaymentMethodEnum = Field(
         ..., description="Payment method (Khalti, Esewa, Cash)"
     )
+    payment_type: PaymentTypeEnum = Field(..., description="Payment type")
     status: PaymentTransactionStatusEnum = Field(
         default=PaymentTransactionStatusEnum.PENDING
     )
@@ -86,6 +88,7 @@ class PaymentResponseSchema(BaseModel):
     paid_by_user_id: str
     amount: float
     payment_method: PaymentMethodEnum
+    payment_type: PaymentTypeEnum
     status: PaymentTransactionStatusEnum
     transaction_id: Optional[str] = None
     gateway_ref: Optional[str] = None

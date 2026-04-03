@@ -8,6 +8,7 @@ from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.common.enums.payment_type_enum import PaymentTypeEnum
 from app.common.models.model_mixins.timestamp_mixin import TimestampMixin
 from app.db.base import Base
 
@@ -31,6 +32,14 @@ class Payment(Base, TimestampMixin):
         SQLEnum(
             PaymentMethodEnum,
             name="payment_method_enum",
+            values_callable=lambda x: [e.value for e in x],
+        ),
+        nullable=False,
+    )
+    payment_type: Mapped[PaymentTypeEnum] = mapped_column(
+        SQLEnum(
+            PaymentTypeEnum,
+            name="payment_type_enum",
             values_callable=lambda x: [e.value for e in x],
         ),
         nullable=False,
