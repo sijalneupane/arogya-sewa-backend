@@ -21,6 +21,8 @@ from app.modules.notification.v1.models import Notification
 
 # from app.modules.appointment.v1.models import Appointment
 from app.modules.availability.v1.models import Availability
+from app.modules.dashboard.v1.models import ActivityLog
+from app.modules.payment.v1.models import Payment
 
 # Define HTTP methods
 readOnlyMethods = ["GET"]
@@ -67,7 +69,44 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         ),
         # Super admin payment access
         setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/initiate", postMethod
+        ),
+        setAuthorizationPermissions(role, "/api/v1/payments/khalti/verify", postMethod),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/initiate", postMethod
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/khalti/final/verify", postMethod
+        ),
+        setAuthorizationPermissions(role, "/api/v1/payments/cash/record", postMethod),
+        setAuthorizationPermissions(
             role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/doctor/my-appointments", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/payments/hospital-admin/appointments", readOnlyMethods
+        ),
+        # Super admin notification access
+        setAuthorizationPermissions(role, "/api/v1/notifications/send", postMethod),
+        setAuthorizationPermissions(role, "/api/v1/notifications/me", readOnlyMethods),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/notifications/{notification_id}/read",
+            ["PATCH"],
+        ),
+        # Dashboard activity access
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/activities/system", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/dashboard/activities/hospital/{hospital_id}",
+            readOnlyMethods,
         ),
     ]
 
@@ -136,12 +175,33 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
         ),
+        # Hospital admin notification access
+        setAuthorizationPermissions(role, "/api/v1/notifications/send", postMethod),
+        setAuthorizationPermissions(role, "/api/v1/notifications/me", readOnlyMethods),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/notifications/{notification_id}/read",
+            ["PATCH"],
+        ),
+        # Dashboard activity access (hospital scoped)
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/dashboard/activities/hospital/{hospital_id}",
+            readOnlyMethods,
+        ),
     ]
 
 
 def getUserPermissions(role: Role) -> List[Authorization]:
     return [
         setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
+        # Dashboard activity access (own activities)
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
         # Patient can book and view their appointments
         setAuthorizationPermissions(
             role, "/api/v1/appointments", postMethod + readOnlyMethods
@@ -181,6 +241,13 @@ def getUserPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
         ),
+        # Patient notification access
+        setAuthorizationPermissions(role, "/api/v1/notifications/me", readOnlyMethods),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/notifications/{notification_id}/read",
+            ["PATCH"],
+        ),
         # setAuthorizationPermissions(
         #     role, "/users/me", readOnlyMethods + partialReadWriteMethods
         # )
@@ -190,6 +257,10 @@ def getUserPermissions(role: Role) -> List[Authorization]:
 def getDoctorPermissions(role: Role) -> List[Authorization]:
     return [
         setAuthorizationPermissions(role, "/api/v1/doctors/me", readOnlyMethods),
+        # Dashboard activity access (own activities)
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
         setAuthorizationPermissions(role, "/api/v1/doctors/{doctor_id}", writeMethods),
         setAuthorizationPermissions(role, "/api/v1/availabilities", postMethod),
         setAuthorizationPermissions(
@@ -232,6 +303,13 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
         ),
         setAuthorizationPermissions(
             role, "/api/v1/payments/appointment/{appointment_id}", readOnlyMethods
+        ),
+        # Doctor notification access
+        setAuthorizationPermissions(role, "/api/v1/notifications/me", readOnlyMethods),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/notifications/{notification_id}/read",
+            ["PATCH"],
         ),
         # setAuthorizationPermissions(
         #     role, "/appointments", readOnlyMethods + writeMethods

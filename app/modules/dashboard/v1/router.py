@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums.role_enum import RoleEnum
 from app.common.schema.pagination import PaginatedResponse, PaginationMeta
+from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
@@ -29,6 +30,7 @@ async def get_system_activities(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
 ) -> list[ActivityLogResponse]:
     """
     Get recent activities across the entire system.
@@ -49,6 +51,7 @@ async def get_hospital_activities(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),
     current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
 ) -> list[ActivityLogResponse]:
     """
     Get recent activities for a specific hospital.
@@ -77,6 +80,7 @@ async def get_activities(
     filters: DashboardActivityFilters = Depends(),
     db: AsyncSession = Depends(get_db),
     current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
 ) -> PaginatedResponse[list[ActivityLogResponse]]:
     """
     Get paginated activities based on user permissions and filters.
