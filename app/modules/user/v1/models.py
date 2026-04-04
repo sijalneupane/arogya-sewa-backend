@@ -12,6 +12,7 @@ from app.db.base import Base
 # Only import Role for type-checking (avoids runtime circular import)
 if TYPE_CHECKING:
     from app.modules.auth.v1.models import Role
+    from app.modules.dashboard.v1.models import ActivityLog
     from app.modules.doctor.v1.models import Doctor
     from app.modules.file.v1.models import File
     from app.modules.hospital.v1.models import Hospital
@@ -52,6 +53,9 @@ class User(Base, TimestampMixin):
     )
     notifications_received: Mapped[list["Notification"]] = relationship(
         back_populates="receiver", cascade="all, delete-orphan"
+    )
+    activity_logs: Mapped[list["ActivityLog"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
     @property
