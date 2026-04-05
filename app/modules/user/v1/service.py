@@ -175,9 +175,9 @@ async def update_user(
         result = await db.execute(
             select(User)
             .options(selectinload(User.role), selectinload(User.files))
-            .where(User.id == user_id, File.file_type == FileTypeEnum.PROFILE)
+            .where(User.id == user_id)
         )
-        user = result.scalar_one_or_none()
+        user = result.unique().scalar_one_or_none()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
