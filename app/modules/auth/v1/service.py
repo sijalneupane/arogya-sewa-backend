@@ -281,6 +281,7 @@ async def reset_user_password(
     password: str,
     confirm_password: str,
 ):
+    print("email to reset password for:", email)
     user = await get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

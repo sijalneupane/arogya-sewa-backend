@@ -10,11 +10,15 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.dashboard.v1.schema import (
     ActivityLogResponse,
     DashboardActivityFilters,
+    HospitalAdminDashboardSummary,
+    SuperAdminDashboardSummary,
 )
 from app.modules.dashboard.v1.service import (
     build_activity_response,
+    get_hospital_admin_dashboard_summary,
     get_hospital_recent_activities,
     get_recent_activities,
+    get_super_admin_dashboard_summary,
     get_system_recent_activities,
 )
 from app.modules.hospital.v1.service import get_hospital_by_admin_id
@@ -25,7 +29,34 @@ router = APIRouter(
 )
 
 
+@router.get("/summary")
+async def get_super_admin_dashboard_details(
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
+) -> SuperAdminDashboardSummary:
+    """Get consolidated dashboard summary for super admin."""
+    return await get_super_admin_dashboard_summary(db)
+
+
 @router.get("/activities/system")
+@router.get("/hospital-admin/summary")
+async def get_hospital_admin_dashboard_details(
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
+) -> HospitalAdminDashboardSummary:
+    """Get consolidated dashboard summary for a hospital admin's own hospital."""
+    if current_user.role != RoleEnum.HOSPITAL_ADMIN:
+        raise HTTPException(
+            status_code=403,
+            detail="Only hospital admin can view hospital dashboard summary",
+        )
+
+    hospital = await get_hospital_by_admin_id(db, current_user.sub)
+    return await get_hospital_admin_dashboard_summary(db, hospital.hospital_id)
+
+
 async def get_system_activities(
     limit: int = 50,
     db: AsyncSession = Depends(get_db),

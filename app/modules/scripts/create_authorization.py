@@ -103,6 +103,7 @@ def getSuperAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/dashboard/activities/system", readOnlyMethods
         ),
+        setAuthorizationPermissions(role, "/api/v1/dashboard/summary", readOnlyMethods),
         setAuthorizationPermissions(
             role,
             "/api/v1/dashboard/activities/hospital/{hospital_id}",
@@ -186,6 +187,9 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         # Dashboard activity access (hospital scoped)
         setAuthorizationPermissions(
             role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/hospital-admin/summary", readOnlyMethods
         ),
         setAuthorizationPermissions(
             role,

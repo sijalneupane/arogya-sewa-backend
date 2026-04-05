@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-@router.post("/signup/patient", response_model=SignupResponse)
+@router.post("/signup", response_model=SignupResponse)
 async def signup_patient_route(
     data: PatientSignupSchema, db: AsyncSession = Depends(get_db)
 ):
@@ -94,22 +94,22 @@ async def signup_patient_route(
 #     )
 
 
-@router.post("/signup/super-admin", response_model=SignupResponse)
-async def signup_super_admin_route(
-    data: SuperAdminSignupSchema, db: AsyncSession = Depends(get_db)
-):
-    """Register a new super admin user. Hospital admin cannot be created via signup."""
-    user = await signup_super_admin(
-        db=db,
-        email=data.email,
-        name=data.name,
-        phone_number=data.phone_number,
-        password=data.password,
-    )
-    return SignupResponse(
-        message="Super admin registered successfully",
-        data=UserResponse.model_validate(user),
-    )
+# @router.post("/signup/super-admin", response_model=SignupResponse)
+# async def signup_super_admin_route(
+#     data: SuperAdminSignupSchema, db: AsyncSession = Depends(get_db)
+# ):
+#     """Register a new super admin user. Hospital admin cannot be created via signup."""
+#     user = await signup_super_admin(
+#         db=db,
+#         email=data.email,
+#         name=data.name,
+#         phone_number=data.phone_number,
+#         password=data.password,
+#     )
+#     return SignupResponse(
+#         message="Super admin registered successfully",
+#         data=UserResponse.model_validate(user),
+#     )
 
 
 @router.post("/login", response_model=LoginResponse)

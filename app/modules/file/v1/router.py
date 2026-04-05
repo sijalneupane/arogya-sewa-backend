@@ -38,7 +38,12 @@ async def update_route(
     """
     Update a file and return its new URL.
     """
-    updated_file = await update_file(db=db, file=file, file_id=file_id)
+    updated_file = await update_file(
+        db=db,
+        file=file,
+        file_id=file_id,
+        current_user_id=current_user.sub,
+    )
     return updated_file
 
 

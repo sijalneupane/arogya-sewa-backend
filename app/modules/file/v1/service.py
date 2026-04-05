@@ -1,10 +1,9 @@
-from fastapi import Depends, HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.common.enums.file_meta_type_enum import FileMetaTypeEnum
 from app.common.enums.file_type_enum import FileTypeEnum
-from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.cloudinary.service import (
     delete_file_cloudinary,
@@ -64,12 +63,33 @@ async def update_file(
     file: UploadFile,
     # file_type: FileTypeEnum,
     file_id: str,
+    current_user_id: str,
 ):
     try:
         file_query = db.execute(select(File).where(File.file_id == file_id))
         file_obj = (await file_query).scalar_one_or_none()
         if not file_obj:
             raise HTTPException(status_code=404, detail="File not found")
+
+        if file_obj.file_type == FileTypeEnum.PROFILE:
+            profile_query = await db.execute(
+                select(File).where(
+                    File.user_id == current_user_id,
+                    File.file_type == FileTypeEnum.PROFILE,
+                )
+            )
+            existing_profile = profile_query.scalar_one_or_none()
+
+            if not existing_profile:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cannot update profile image. First upload profile image.",
+                )
+
+            # Always replace the user's existing profile image.
+            if existing_profile.file_id != file_obj.file_id:
+                file_obj = existing_profile
+
         new_url, new_public_id = await upload_file_cloudinary(
             file, folder="arogyga_images"
         )
@@ -80,6 +100,8 @@ async def update_file(
         await db.commit()
         await db.refresh(file_obj)
         return file_obj
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error: " + str(e))
 
