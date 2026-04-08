@@ -55,7 +55,9 @@ class User(Base, TimestampMixin):
         back_populates="receiver", cascade="all, delete-orphan"
     )
     activity_logs: Mapped[list["ActivityLog"]] = relationship(
-        back_populates="user", cascade="all, delete-orphan"
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
 
     @property
