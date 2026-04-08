@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from app.common.enums.file_type_enum import FileTypeEnum
+from app.common.enums.role_enum import RoleEnum
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
@@ -28,9 +29,10 @@ async def upload_route(
     return file_info
 
 
-@router.patch("/update/{file_id}", summary="Update a file")
+@router.patch("/update/{file_id}")
 async def update_route(
     file_id: str,
+    target_user_id: str,  # 👈 from query/body
     file: UploadFile = File(...),
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -38,11 +40,17 @@ async def update_route(
     """
     Update a file and return its new URL.
     """
+    if (
+        current_user.role not in [RoleEnum.SUPER_ADMIN, RoleEnum.HOSPITAL_ADMIN]
+        and current_user.sub != target_user_id
+    ):
+        raise HTTPException(status_code=403, detail="Not authorized")
     updated_file = await update_file(
         db=db,
         file=file,
         file_id=file_id,
         current_user_id=current_user.sub,
+        target_user_id=target_user_id,
     )
     return updated_file
 
