@@ -120,6 +120,10 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/hospital/{hospital_id}", writeMethods
         ),
+        # will chang to user/me for update later
+        setAuthorizationPermissions(
+            role, "/api/v1/users/{user_id}", readOnlyMethods + writeMethods
+        ),
         setAuthorizationPermissions(role, "/api/v1/hospital/my", readOnlyMethods),
         setAuthorizationPermissions(
             role, "/api/v1/doctors", postMethod + readOnlyMethods
