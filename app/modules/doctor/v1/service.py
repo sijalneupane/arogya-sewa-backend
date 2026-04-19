@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
-from app.common.enums.role_enum import RoleEnum
 from app.common.enums.file_type_enum import FileTypeEnum
+from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
@@ -51,6 +51,7 @@ async def create_doctor(
     db: AsyncSession,
     department_id: Optional[str],
     experience: str,
+    booking_fee: float,
     license_certificate: str,
     user_name: str,
     user_email: str,
@@ -116,6 +117,7 @@ async def create_doctor(
             doctor = Doctor(
                 doctor_id=StringUtils.randomAlphaNumeric(8),
                 experience=experience,
+                booking_fee=booking_fee,
                 license_certificate=license_file_obj,
                 user_id=doctor_user.id,
                 hospital_id=hospital.hospital_id if hospital else None,
@@ -458,6 +460,7 @@ async def update_doctor(
     license_certificate_id: Optional[str] = None,
     department_id: Optional[str] = None,
     hospital_id: Optional[str] = None,
+    booking_fee: Optional[float] = None,
     status: Optional[DoctorStatusEnum] = None,
     bio: Optional[str] = None,
     user: Optional[DoctorUserUpdateSchema] = None,
@@ -554,6 +557,8 @@ async def update_doctor(
             doctor.license_certificate = license_file_obj
         if hospital_id is not None:
             doctor.hospital_id = hospital_id if hospital_id else None
+        if booking_fee is not None:
+            doctor.booking_fee = booking_fee
         if status is not None:
             doctor.status = status
         if bio is not None:

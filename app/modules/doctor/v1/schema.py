@@ -41,6 +41,7 @@ class DoctorCreateSchema(BaseModel):
     experience: str = "No experience."
     license_certificate_id: str
     department_id: Optional[str] = None
+    booking_fee: float = Field(..., ge=0)
     bio: Optional[str] = Field(None, max_length=1000)
     status: DoctorStatusEnum = DoctorStatusEnum.ACTIVE
     # hospital_id: Optional[str] = None
@@ -59,6 +60,7 @@ class DoctorUpdateSchema(BaseModel):
     experience: Optional[str] = None
     license_certificate_id: Optional[str] = None
     department_id: Optional[str] = None
+    booking_fee: Optional[float] = Field(None, ge=0)
     status: Optional[DoctorStatusEnum] = None
     bio: Optional[str] = Field(None, max_length=1000)
     user: Optional[DoctorUserUpdateSchema] = None
@@ -104,6 +106,7 @@ class DoctorWithHospitalResponseSchema(BaseModel):
     experience: str
     status: DoctorStatusEnum
     bio: Optional[str] = None
+    booking_fee: float
     license_certificate: Optional[FileResponseSchema] = None
     department: Optional[DepartmentResponseSchema] = None
     user: UserResponse

@@ -200,7 +200,14 @@ async def get_appointment_by_id(
             .selectinload(User.files),
             selectinload(Appointment.doctor)
             .selectinload(Doctor.hospital)
-            .load_only(Hospital.hospital_id, Hospital.name, Hospital.location),
+            .load_only(
+                Hospital.hospital_id,
+                Hospital.name,
+                Hospital.location,
+                Hospital.admin_id,
+            )
+            .selectinload(Hospital.admin)
+            .load_only(User.id, User.name, User.email),
             selectinload(Appointment.doctor).selectinload(Doctor.license_certificate),
             selectinload(Appointment.doctor).selectinload(Doctor.department),
             selectinload(Appointment.availability),

@@ -28,7 +28,7 @@ class Doctor(Base, TimestampMixin):
         default=DoctorStatusEnum.ACTIVE,
     )
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    booking_fee: Mapped[float] = mapped_column(nullable=False, default=0.0)
+    booking_fee: Mapped[float] = mapped_column(nullable=False, default=100.0)
     license_certificate_id: Mapped[str] = mapped_column(
         String(100),
         ForeignKey("file.file_id"),

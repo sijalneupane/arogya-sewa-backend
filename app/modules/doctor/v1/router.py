@@ -59,6 +59,7 @@ async def create_new_doctor(
         db=db,
         department_id=data.department_id,
         experience=data.experience,
+        booking_fee=data.booking_fee,
         license_certificate=data.license_certificate_id,
         user_name=data.user.name,
         user_email=data.user.email,
