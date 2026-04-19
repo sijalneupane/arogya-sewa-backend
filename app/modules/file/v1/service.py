@@ -1,7 +1,6 @@
 from fastapi import HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.common.enums.file_meta_type_enum import FileMetaTypeEnum
 from app.common.enums.file_type_enum import FileTypeEnum
@@ -66,7 +65,7 @@ async def update_file(
     # file_type: FileTypeEnum,
     file_id: str,
     current_user_id: str,
-    target_user_id: str,
+    target_user_id: str | None = None,
 ):
     logging_config.logger.info(
         f"Updating file with ID: {file_id} for user: {current_user_id}"
@@ -78,9 +77,15 @@ async def update_file(
             raise HTTPException(status_code=404, detail="File not found")
 
         if file_obj.file_type == FileTypeEnum.PROFILE:
+            if not target_user_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail="target_user_id is required to update profile image",
+                )
+
             profile_query = await db.execute(
                 select(File).where(
-                    File.user_id == target_user_id,  # ✅ FIXED
+                    File.user_id == target_user_id,
                     File.file_type == FileTypeEnum.PROFILE,
                 )
             )

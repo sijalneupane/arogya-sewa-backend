@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.common.enums.file_type_enum import FileTypeEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.file.v1.service import delete_file, save_file, update_file
-from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/file",
@@ -32,7 +33,7 @@ async def upload_route(
 @router.patch("/update/{file_id}")
 async def update_route(
     file_id: str,
-    target_user_id: str,  # 👈 from query/body
+    target_user_id: str | None = Query(None),
     file: UploadFile = File(...),
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -40,10 +41,13 @@ async def update_route(
     """
     Update a file and return its new URL.
     """
-    if (
-        current_user.role not in [RoleEnum.SUPER_ADMIN, RoleEnum.HOSPITAL_ADMIN]
-        and current_user.sub != target_user_id
-    ):
+    is_admin = current_user.role in [RoleEnum.SUPER_ADMIN, RoleEnum.HOSPITAL_ADMIN]
+
+    # For regular users, default to self so profile update works without query param.
+    if not target_user_id and not is_admin:
+        target_user_id = current_user.sub
+
+    if target_user_id and not is_admin and current_user.sub != target_user_id:
         raise HTTPException(status_code=403, detail="Not authorized")
     updated_file = await update_file(
         db=db,
