@@ -362,3 +362,16 @@ async def refresh_user_tokens(db: AsyncSession, refresh_token: str):
             "refresh_token": rotated_refresh_token,
         },
     }
+
+
+# async def getLoggedInUser(db: AsyncSession, user_id: str):
+#     # Load user with role and files
+#     result = await db.execute(
+#         select(User)
+#         .options(selectinload(User.role), selectinload(User.files))
+#         .where(User.id == user_id)
+#     )
+#     user_with_details = result.scalar_one()
+#     if not user_with_details:
+#         raise HTTPException(status_code=404, detail="User not found")
+#     return user_with_details

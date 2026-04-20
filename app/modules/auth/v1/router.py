@@ -33,9 +33,11 @@ from app.modules.user.v1.schema import (
     PatientSignupSchema,
     SignupResponse,
     SuperAdminSignupSchema,
+    UserByIdResponse,
     UserResponse,
 )
 from app.modules.user.v1.schema import UserLogin as LoginSchema
+from app.modules.user.v1.service import get_user_by_id
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -184,3 +186,15 @@ async def change_password_route(
         new_password=data.new_password,
         confirm_password=data.confirm_password,
     )
+
+
+@router.get("/me", response_model=UserByIdResponse)
+async def get_current_user_route(
+    current_user: JwtPayload = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get the currently authenticated user's details."""
+    user = await get_user_by_id(db=db, user_id=current_user.sub)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
