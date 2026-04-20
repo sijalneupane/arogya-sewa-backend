@@ -24,6 +24,9 @@ async def save_file(
             raise HTTPException(
                 status_code=400, detail="File size exceeds the 2MB limit"
             )
+        logging_config.logger.info(
+            f"Saving file for user: {uploaded_by} and file type: {file_type}"
+        )
         if file_type == FileTypeEnum.PROFILE:
             duplicate_profile_query = await db.execute(
                 select(File).where(
