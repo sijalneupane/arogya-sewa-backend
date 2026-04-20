@@ -17,7 +17,7 @@ router = APIRouter(
 @router.post("/upload", summary="Upload a file")
 async def upload_route(
     file: UploadFile = File(...),
-    file_type: FileTypeEnum = Form(FileTypeEnum.HOSPITAL),  # 👈 now body (form-data)
+    file_type: FileTypeEnum = Form(...),  # 👈 now body (form-data)
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
