@@ -1,3 +1,6 @@
+"""Seed authorization rules for the application."""
+# pyright: reportUnusedImport=false
+
 from typing import List
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,8 +11,8 @@ from app.core.utils.string_utils import StringUtils
 from app.db.database import AsyncSessionLocal
 from app.modules.auth.v1.models import Authorization, Role
 
-# Import all models to ensure they're registered with SQLAlchemy before running
-from app.modules.doctor.v1.models import Doctor  # Import Doctor model
+# Import all models to ensure they are registered with SQLAlchemy before running.
+from app.modules.doctor.v1.models import Doctor
 from app.modules.appointment.v1.models import Appointment
 from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
 from app.modules.department.v1.models import Department
@@ -18,8 +21,6 @@ from app.modules.hospital.v1.models import Hospital
 from app.modules.user.v1.models import User
 from app.modules.patient.v1.models import Patient
 from app.modules.notification.v1.models import Notification
-
-# from app.modules.appointment.v1.models import Appointment
 from app.modules.availability.v1.models import Availability
 from app.modules.dashboard.v1.models import ActivityLog
 from app.modules.payment.v1.models import Payment
@@ -271,6 +272,17 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
         # Dashboard activity access (own activities)
         setAuthorizationPermissions(
             role, "/api/v1/dashboard/activities", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/doctor/summary", readOnlyMethods
+        ),
+        setAuthorizationPermissions(
+            role,
+            "/api/v1/dashboard/doctor/upcoming-appointments",
+            readOnlyMethods,
+        ),
+        setAuthorizationPermissions(
+            role, "/api/v1/dashboard/doctor/today-appointments", readOnlyMethods
         ),
         setAuthorizationPermissions(role, "/api/v1/doctors/{doctor_id}", writeMethods),
         setAuthorizationPermissions(role, "/api/v1/availabilities", postMethod),

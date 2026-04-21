@@ -10,11 +10,16 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.dashboard.v1.schema import (
     ActivityLogResponse,
     DashboardActivityFilters,
+    DoctorAppointmentFeedResponse,
+    DoctorDashboardSummaryResponse,
     HospitalAdminDashboardSummary,
     SuperAdminDashboardSummary,
 )
 from app.modules.dashboard.v1.service import (
     build_activity_response,
+    get_doctor_dashboard_summary,
+    get_doctor_today_appointments_feed,
+    get_doctor_upcoming_appointments_feed,
     get_hospital_admin_dashboard_summary,
     get_hospital_recent_activities,
     get_recent_activities,
@@ -55,6 +60,56 @@ async def get_hospital_admin_dashboard_details(
 
     hospital = await get_hospital_by_admin_id(db, current_user.sub)
     return await get_hospital_admin_dashboard_summary(db, hospital.hospital_id)
+
+
+@router.get("/doctor/summary")
+async def get_doctor_dashboard_details(
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
+) -> DoctorDashboardSummaryResponse:
+    """Get consolidated dashboard summary for a doctor."""
+    if current_user.role != RoleEnum.DOCTOR:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctor can view doctor dashboard summary",
+        )
+
+    return await get_doctor_dashboard_summary(db, current_user.sub)
+
+
+@router.get("/doctor/upcoming-appointments")
+async def get_doctor_upcoming_appointments(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
+) -> DoctorAppointmentFeedResponse:
+    """Get upcoming appointments for the logged-in doctor, ordered by nearest start time."""
+    if current_user.role != RoleEnum.DOCTOR:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctor can view upcoming appointments",
+        )
+
+    return await get_doctor_upcoming_appointments_feed(db, current_user.sub, limit)
+
+
+@router.get("/doctor/today-appointments")
+async def get_doctor_today_appointments(
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    current_user: JwtPayload = Depends(get_current_user),
+    _: bool = Depends(authorize),
+) -> DoctorAppointmentFeedResponse:
+    """Get today's appointments for the logged-in doctor, ordered by start time."""
+    if current_user.role != RoleEnum.DOCTOR:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctor can view today's appointments",
+        )
+
+    return await get_doctor_today_appointments_feed(db, current_user.sub, limit)
 
 
 async def get_system_activities(

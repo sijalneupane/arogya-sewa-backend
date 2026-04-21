@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 from app.common.enums.payment_method_enum import PaymentMethodEnum
 from app.common.enums.payment_transaction_status_enum import (
@@ -100,6 +100,10 @@ class PaymentResponseSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_serializer("amount")
+    def serialize_amount(self, amount: float) -> float:
+        return round(amount, 2)
 
 
 class CashPaymentRecordRequest(BaseModel):

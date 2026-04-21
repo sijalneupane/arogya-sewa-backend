@@ -1,14 +1,18 @@
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import List, Optional, Tuple
 
-from sqlalchemy import and_, desc, distinct, func, select
+from fastapi import HTTPException
+from sqlalchemy import and_, case, desc, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.doctor_status_enum import DoctorStatusEnum
 from app.common.enums.payment_transaction_status_enum import (
     PaymentTransactionStatusEnum,
 )
+from app.common.enums.payment_type_enum import PaymentTypeEnum
+from app.core import logging_config
 from app.core.utils.string_utils import StringUtils
 from app.modules.appointment.v1.models import Appointment
 from app.modules.availability.v1.models import Availability
@@ -18,7 +22,15 @@ from app.modules.dashboard.v1.schema import (
     ActivityLogResponse,
     AppointmentMonthlyStats,
     DashboardActivityFilters,
+    DoctorAppointmentFeedItem,
+    DoctorAppointmentFeedResponse,
+    DoctorAppointmentOverview,
+    DoctorAppointmentStatusCount,
+    DoctorAvailabilityOverview,
+    DoctorDashboardSummary,
+    DoctorDashboardSummaryResponse,
     DoctorMonthlyStats,
+    DoctorPaymentOverview,
     HospitalAdminDashboardSummary,
     HospitalMonthlyStats,
     SuperAdminDashboardSummary,
@@ -356,6 +368,307 @@ async def get_super_admin_dashboard_summary(
         ),
         total_paid_amount=float(total_paid_amount_raw or 0.0),
         available_doctors_today=available_doctors_today,
+    )
+
+
+async def _get_doctor_by_user_id(db: AsyncSession, doctor_user_id: str) -> Doctor:
+    doctor_result = await db.execute(
+        select(Doctor).where(Doctor.user_id == doctor_user_id)
+    )
+    doctor = doctor_result.scalar_one_or_none()
+
+    if not doctor:
+        raise HTTPException(
+            status_code=403,
+            detail="User is not associated with a doctor profile",
+        )
+
+    return doctor
+
+
+def _doctor_feed_query(
+    doctor_id: str,
+    start_date_time: datetime,
+    end_date_time: datetime,
+):
+    return (
+        select(Appointment)
+        .options(
+            selectinload(Appointment.patient).selectinload(Patient.user),
+            selectinload(Appointment.availability),
+        )
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .join(Patient, Appointment.patient_id == Patient.patient_id)
+        .join(User, Patient.user_id == User.id)
+        .where(
+            Appointment.doctor_id == doctor_id,
+            Availability.start_date_time >= start_date_time,
+            Availability.start_date_time < end_date_time,
+            Appointment.status != AppointmentStatusEnum.CANCELLED,
+        )
+        .order_by(Availability.start_date_time.asc(), Appointment.created_at.asc())
+    )
+
+
+async def get_doctor_dashboard_summary(
+    db: AsyncSession,
+    doctor_user_id: str,
+) -> DoctorDashboardSummaryResponse:
+    doctor = await _get_doctor_by_user_id(db, doctor_user_id)
+
+    now = datetime.now(timezone.utc)
+    today_start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
+    tomorrow_start = today_start + timedelta(days=1)
+
+    appointment_overview_result = await db.execute(
+        select(
+            func.count(Appointment.appointment_id),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time >= now,
+                                Appointment.status != AppointmentStatusEnum.CANCELLED,
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time >= today_start,
+                                Availability.start_date_time < tomorrow_start,
+                                Appointment.status != AppointmentStatusEnum.CANCELLED,
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+        )
+        .select_from(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .where(Appointment.doctor_id == doctor.doctor_id)
+    )
+    total_appointments, total_upcoming_appointments, today_appointments = (
+        appointment_overview_result.one()
+    )
+
+    status_results = await db.execute(
+        select(Appointment.status, func.count(Appointment.appointment_id))
+        .select_from(Appointment)
+        .where(Appointment.doctor_id == doctor.doctor_id)
+        .group_by(Appointment.status)
+    )
+    status_counts = {status: int(count) for status, count in status_results.all()}
+
+    payment_overview_result = await db.execute(
+        select(
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            Payment.status == PaymentTransactionStatusEnum.SUCCESS,
+                            Payment.amount,
+                        ),
+                        else_=0.0,
+                    )
+                ),
+                0.0,
+            ),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Payment.status == PaymentTransactionStatusEnum.SUCCESS,
+                                Payment.payment_type
+                                == PaymentTypeEnum.APPOINTMENT_ADVANCE,
+                            ),
+                            Payment.amount,
+                        ),
+                        else_=0.0,
+                    )
+                ),
+                0.0,
+            ),
+        )
+        .select_from(Appointment)
+        .outerjoin(Payment, Payment.appointment_id == Appointment.appointment_id)
+        .where(Appointment.doctor_id == doctor.doctor_id)
+    )
+    total_payment_received, total_advance_received = payment_overview_result.one()
+
+    pending_amount_result = await db.execute(
+        select(func.coalesce(func.sum(Appointment.due_amount), 0.0)).where(
+            Appointment.doctor_id == doctor.doctor_id
+        )
+    )
+    total_pending_amount = pending_amount_result.scalar_one()
+
+    future_availability_result = await db.execute(
+        select(
+            func.count(Availability.availability_id),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (Availability.is_booked.is_(False), 1),
+                        else_=0,
+                    )
+                ),
+                0,
+            ),
+        )
+        .select_from(Availability)
+        .where(
+            Availability.doctor_id == doctor.doctor_id,
+            Availability.start_date_time >= now,
+        )
+    )
+    total_future_availabilities, total_open_future_availabilities = (
+        future_availability_result.one()
+    )
+
+    return DoctorDashboardSummaryResponse(
+        data=DoctorDashboardSummary(
+            appointment_overview=DoctorAppointmentOverview(
+                total_appointments=int(total_appointments or 0),
+                total_upcoming_appointments=int(total_upcoming_appointments or 0),
+                today_appointments=int(today_appointments or 0),
+                status_counts=[
+                    DoctorAppointmentStatusCount(
+                        status=status,
+                        count=status_counts.get(status, 0),
+                    )
+                    for status in AppointmentStatusEnum
+                ],
+            ),
+            payment_overview=DoctorPaymentOverview(
+                total_payment_received=float(total_payment_received or 0.0),
+                total_advance_received=float(total_advance_received or 0.0),
+                total_pending_amount=float(total_pending_amount or 0.0),
+            ),
+            availability_overview=DoctorAvailabilityOverview(
+                total_future_availabilities=int(total_future_availabilities or 0),
+                total_open_future_availabilities=int(
+                    total_open_future_availabilities or 0
+                ),
+            ),
+        )
+    )
+
+
+async def get_doctor_upcoming_appointments_feed(
+    db: AsyncSession,
+    doctor_user_id: str,
+    limit: int = 10,
+) -> DoctorAppointmentFeedResponse:
+    doctor = await _get_doctor_by_user_id(db, doctor_user_id)
+    now = datetime.now(timezone.utc)
+    logging_config.logger.info(
+        f"Fetching upcoming appointments for doctor_id={doctor.doctor_id} starting from {now.isoformat()} with limit={limit}"
+    )
+    count_result = await db.execute(
+        select(func.count(Appointment.appointment_id))
+        .select_from(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .where(
+            Appointment.doctor_id == doctor.doctor_id,
+            Availability.start_date_time >= now,
+            Appointment.status != AppointmentStatusEnum.CANCELLED,
+        )
+    )
+    total_records = count_result.scalar_one()
+
+    query = _doctor_feed_query(
+        doctor.doctor_id, now, datetime.max.replace(tzinfo=timezone.utc)
+    )
+    result = await db.execute(query.limit(limit))
+    appointments = list(result.scalars().all())
+
+    return DoctorAppointmentFeedResponse(
+        message="Doctor upcoming appointments fetched successfully",
+        totalRecords=total_records,
+        data=[
+            DoctorAppointmentFeedItem(
+                appointment_id=appointment.appointment_id,
+                patient_id=appointment.patient_id,
+                patient_name=appointment.patient.user.name
+                if appointment.patient and appointment.patient.user
+                else "Patient",
+                status=appointment.status,
+                payment_status=appointment.payment_status,
+                start_date_time=appointment.availability.start_date_time,
+                end_date_time=appointment.availability.end_date_time,
+                total_amount=appointment.total_amount,
+                paid_amount=appointment.paid_amount,
+                due_amount=appointment.due_amount,
+                reason=appointment.reason,
+                notes=appointment.notes,
+            )
+            for appointment in appointments
+        ],
+    )
+
+
+async def get_doctor_today_appointments_feed(
+    db: AsyncSession,
+    doctor_user_id: str,
+    limit: int = 10,
+) -> DoctorAppointmentFeedResponse:
+    doctor = await _get_doctor_by_user_id(db, doctor_user_id)
+    now = datetime.now(timezone.utc)
+    today_start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
+    tomorrow_start = today_start + timedelta(days=1)
+
+    count_result = await db.execute(
+        select(func.count(Appointment.appointment_id))
+        .select_from(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .where(
+            Appointment.doctor_id == doctor.doctor_id,
+            Availability.start_date_time >= today_start,
+            Availability.start_date_time < tomorrow_start,
+            Appointment.status != AppointmentStatusEnum.CANCELLED,
+        )
+    )
+    total_records = count_result.scalar_one()
+
+    query = _doctor_feed_query(doctor.doctor_id, today_start, tomorrow_start)
+    result = await db.execute(query.limit(limit))
+    appointments = list(result.scalars().all())
+
+    return DoctorAppointmentFeedResponse(
+        message="Doctor today appointments fetched successfully",
+        totalRecords=total_records,
+        data=[
+            DoctorAppointmentFeedItem(
+                appointment_id=appointment.appointment_id,
+                patient_id=appointment.patient_id,
+                patient_name=appointment.patient.user.name
+                if appointment.patient and appointment.patient.user
+                else "Patient",
+                status=appointment.status,
+                payment_status=appointment.payment_status,
+                start_date_time=appointment.availability.start_date_time,
+                end_date_time=appointment.availability.end_date_time,
+                total_amount=appointment.total_amount,
+                paid_amount=appointment.paid_amount,
+                due_amount=appointment.due_amount,
+                reason=appointment.reason,
+                notes=appointment.notes,
+            )
+            for appointment in appointments
+        ],
     )
 
 

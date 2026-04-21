@@ -2,9 +2,11 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_serializer
 
 from app.common.enums.activity_log_action_type_enum import ActivityLogActionTypeEnum
+from app.common.enums.appointment_status_enum import AppointmentStatusEnum
+from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.schema.pagination import PaginationQuery
 
 
@@ -95,3 +97,70 @@ class HospitalAdminDashboardSummary(BaseModel):
     total_departments: int
     appointments_monthly: AppointmentMonthlyStats
     doctors_monthly: DoctorMonthlyStats
+
+
+class DoctorAppointmentStatusCount(BaseModel):
+    status: AppointmentStatusEnum
+    count: int
+
+
+class DoctorAppointmentOverview(BaseModel):
+    total_appointments: int
+    total_upcoming_appointments: int
+    today_appointments: int
+    status_counts: list[DoctorAppointmentStatusCount]
+
+
+class DoctorPaymentOverview(BaseModel):
+    total_payment_received: float
+    total_advance_received: float
+    total_pending_amount: float
+
+    @field_serializer("total_payment_received")
+    def serialize_total_payment_received(self, value: float) -> float:
+        return round(value, 2)
+
+    @field_serializer("total_advance_received")
+    def serialize_total_advance_received(self, value: float) -> float:
+        return round(value, 2)
+
+    @field_serializer("total_pending_amount")
+    def serialize_total_pending_amount(self, value: float) -> float:
+        return round(value, 2)
+
+
+class DoctorAvailabilityOverview(BaseModel):
+    total_future_availabilities: int
+    total_open_future_availabilities: int
+
+
+class DoctorDashboardSummary(BaseModel):
+    appointment_overview: DoctorAppointmentOverview
+    payment_overview: DoctorPaymentOverview
+    availability_overview: DoctorAvailabilityOverview
+
+
+class DoctorDashboardSummaryResponse(BaseModel):
+    message: str = "Doctor dashboard summary fetched successfully"
+    data: DoctorDashboardSummary
+
+
+class DoctorAppointmentFeedItem(BaseModel):
+    appointment_id: str
+    patient_id: str
+    patient_name: str
+    status: AppointmentStatusEnum
+    payment_status: PaymentStatusEnum
+    start_date_time: datetime
+    end_date_time: datetime
+    total_amount: float
+    paid_amount: float
+    due_amount: float
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DoctorAppointmentFeedResponse(BaseModel):
+    message: str
+    totalRecords: int
+    data: list[DoctorAppointmentFeedItem]
