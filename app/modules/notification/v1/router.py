@@ -9,18 +9,19 @@ from app.common.schema.pagination import (
     PaginationMeta,
     PaginationQuery,
 )
-from app.core.authorization import authorize
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import JwtPayload
 
 from .schema import (
+    NotificationReadAllResponse,
     NotificationResponseSchema,
     NotificationSendSchema,
     NotificationSingleResponse,
 )
 from .service import (
     list_notifications_for_user,
+    mark_all_notifications_as_read,
     mark_notification_as_read,
     send_notification,
 )
@@ -116,4 +117,20 @@ async def mark_as_read(
     return NotificationSingleResponse(
         message="Notification marked as read",
         data=response,
+    )
+
+
+@router.patch("/read-all/me", summary="Mark all notifications as read for current user")
+async def mark_all_as_read(
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    # _=Depends(authorize),
+) -> NotificationReadAllResponse:
+    count = await mark_all_notifications_as_read(
+        db=db,
+        user_id=user.sub,
+    )
+    return NotificationReadAllResponse(
+        message=f"{count} notification(s) marked as read",
+        data={"count": count},
     )

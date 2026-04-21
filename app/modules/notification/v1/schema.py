@@ -41,3 +41,8 @@ class NotificationResponseSchema(BaseModel):
 class NotificationSingleResponse(BaseModel):
     message: str = "Notification processed successfully"
     data: NotificationResponseSchema
+
+
+class NotificationReadAllResponse(BaseModel):
+    message: str = "All notifications marked as read"
+    data: dict = Field(default_factory=lambda: {"count": 0})

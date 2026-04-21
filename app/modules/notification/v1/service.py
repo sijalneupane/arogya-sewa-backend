@@ -152,3 +152,50 @@ async def mark_notification_as_read(
     await db.commit()
     await db.refresh(notification)
     return notification
+
+
+async def mark_all_notifications_as_read(
+    db: AsyncSession,
+    user_id: str,
+) -> int:
+    """
+    Mark all unread notifications as read for a user.
+
+    Args:
+        db: Database session
+        user_id: ID of the user
+
+    Returns:
+        int: Count of notifications marked as read
+    """
+    # Get count of unread notifications
+    count_result = await db.execute(
+        select(func.count(Notification.notification_id)).where(
+            Notification.receiver_user_id == user_id,
+            Notification.has_read.is_(False),
+        )
+    )
+    count = count_result.scalar_one()
+
+    # Update all unread notifications to read
+    await db.execute(
+        select(Notification).where(
+            Notification.receiver_user_id == user_id,
+            Notification.has_read.is_(False),
+        )
+    )
+
+    result = await db.execute(
+        select(Notification).where(
+            Notification.receiver_user_id == user_id,
+            Notification.has_read.is_(False),
+        )
+    )
+    notifications = result.scalars().all()
+
+    for notification in notifications:
+        notification.has_read = True
+
+    await db.commit()
+
+    return count
