@@ -205,7 +205,8 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
 
 def getUserPermissions(role: Role) -> List[Authorization]:
     return [
-        setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
+        # setAuthorizationPermissions(role, "/api/v1/doctors/upgrade", postMethod),
+        setAuthorizationPermissions(role, "/api/v1/profile/update/me", ["PATCH"]),
         # Dashboard activity access (own activities)
         setAuthorizationPermissions(
             role, "/api/v1/dashboard/activities", readOnlyMethods

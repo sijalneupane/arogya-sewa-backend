@@ -78,7 +78,9 @@ class PaymentService:
 
     async def _get_appointment_or_404(self, appointment_id: str) -> Appointment:
         result = await self.db.execute(
-            select(Appointment).where(Appointment.appointment_id == appointment_id)
+            select(Appointment)
+            .options(selectinload(Appointment.availability))
+            .where(Appointment.appointment_id == appointment_id)
         )
         appointment = result.scalar_one_or_none()
         if not appointment:
@@ -126,6 +128,55 @@ class PaymentService:
             )
         return due_amount
 
+    def _validate_payment_time_window(self, appointment: Appointment) -> None:
+        """
+        Validate that payment is made within the allowed time window.
+
+        Payment can only be completed:
+        - From 10 minutes BEFORE the appointment start time
+        - Until the appointment end time
+
+        Args:
+            appointment: The appointment with loaded availability
+
+        Raises:
+            HTTPException: If current time is outside the allowed payment window
+        """
+        if not appointment.availability:
+            raise HTTPException(
+                status_code=400,
+                detail="Appointment availability data not found",
+            )
+
+        current_time = datetime.now(timezone.utc)
+        appointment_start = appointment.availability.start_date_time
+        appointment_end = appointment.availability.end_date_time
+
+        # Ensure all datetimes have timezone info
+        if appointment_start.tzinfo is None:
+            appointment_start = appointment_start.replace(tzinfo=timezone.utc)
+        if appointment_end.tzinfo is None:
+            appointment_end = appointment_end.replace(tzinfo=timezone.utc)
+
+        # Calculate the allowed payment window
+        earliest_payment_time = appointment_start - timedelta(minutes=10)
+
+        # Check if current time is within the window
+        if current_time < earliest_payment_time:
+            time_until_payment_allowed = (
+                earliest_payment_time - current_time
+            ).total_seconds() / 60
+            raise HTTPException(
+                status_code=400,
+                detail=f"Payment cannot be made yet. Payment window opens {int(time_until_payment_allowed)} minutes before the appointment.",
+            )
+
+        if current_time > appointment_end:
+            raise HTTPException(
+                status_code=400,
+                detail="Payment window has closed. The appointment time has ended.",
+            )
+
     async def create_advance_payment(
         self,
         appointment_id: str,
@@ -169,6 +220,9 @@ class PaymentService:
                     f"Expected {expected_advance_amount_paisa}, got {requested_amount_paisa}."
                 ),
             )
+
+        # Validate payment time window
+        # self._validate_payment_time_window(appointment)
 
         advance_amount_paisa = expected_advance_amount_paisa
         payment_id = generate_payment_id()
@@ -245,6 +299,7 @@ class PaymentService:
                 status_code=400,
                 detail="This payment is not a valid advance payment",
             )
+
         print(
             "-----Advance payment verification response from Khalti:", khalti_response
         )
@@ -356,6 +411,9 @@ class PaymentService:
                     f"Expected {expected_final_amount_paisa}, got {requested_amount_paisa}."
                 ),
             )
+
+        # Validate payment time window
+        self._validate_payment_time_window(appointment)
 
         final_amount_paisa = expected_final_amount_paisa
         payment_id = generate_payment_id()
@@ -542,6 +600,9 @@ class PaymentService:
                     f"Expected {remaining_due}, got {requested_amount}."
                 ),
             )
+
+        # Validate payment time window
+        self._validate_payment_time_window(appointment)
 
         payment_id = generate_payment_id()
 
