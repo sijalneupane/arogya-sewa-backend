@@ -14,13 +14,13 @@ from app.modules.patient.v1.service import update_patient
 from app.common.enums.role_enum import RoleEnum
 
 router = APIRouter(
-    prefix="/profile",
+    prefix="/patient",
     tags=["Patient Profile"],
 )
 
 
 @router.patch(
-    "/update/me",
+    "/profile/update/me",
     response_model=PatientUpdateResponse,
     summary="Update patient profile",
 )
