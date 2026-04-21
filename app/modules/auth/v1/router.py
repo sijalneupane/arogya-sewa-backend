@@ -7,7 +7,9 @@ from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.auth.v1.schemas import (
+    AuthenticatedUserResponse,
     AuthMessageResponse,
+    AuthUserByIdResponse,
     ChangePasswordRequest,
     JwtPayload,
     LoginData,
@@ -19,12 +21,12 @@ from app.modules.auth.v1.schemas import (
     VerifyOtpRequest,
 )
 from app.modules.auth.v1.service import (
+    get_authenticated_user,
     login_user,
     refresh_user_tokens,
     reset_user_password,
     send_password_reset_otp,
     signup_patient,
-    signup_super_admin,
     update_user_password,
     verify_otp,
 )
@@ -32,14 +34,12 @@ from app.modules.email.v1.email_utils import send_patient_signup_email
 from app.modules.user.v1.schema import (
     PatientSignupSchema,
     SignupResponse,
-    SuperAdminSignupSchema,
-    UserByIdResponse,
     UserResponse,
 )
 from app.modules.user.v1.schema import UserLogin as LoginSchema
-from app.modules.user.v1.service import get_user_by_id
 
 logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
@@ -47,7 +47,6 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 async def signup_patient_route(
     data: PatientSignupSchema, db: AsyncSession = Depends(get_db)
 ):
-    """Register a new patient user with patient details."""
     user = await signup_patient(
         db=db,
         email=data.user.email,
@@ -188,13 +187,17 @@ async def change_password_route(
     )
 
 
-@router.get("/me", response_model=UserByIdResponse)
+@router.get("/me", response_model=AuthUserByIdResponse)
 async def get_current_user_route(
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Get the currently authenticated user's details."""
-    user = await get_user_by_id(db=db, user_id=current_user.sub)
+    user = await get_authenticated_user(
+        db=db,
+        user_id=current_user.sub,
+        role=current_user.role,
+    )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user
+    return AuthUserByIdResponse(data=AuthenticatedUserResponse.model_validate(user))

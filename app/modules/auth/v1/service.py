@@ -1,5 +1,5 @@
-from datetime import date, datetime, timedelta, timezone
 import secrets
+from datetime import date, datetime, timedelta, timezone
 
 import jwt
 from fastapi import HTTPException
@@ -48,7 +48,7 @@ async def signup_patient(
         )
 
         # Create patient record
-        patient = await create_patient(
+        await create_patient(
             db=db,
             user_id=user.id,
             dob=dob,
@@ -170,6 +170,18 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     return user
 
 
+async def get_authenticated_user(db: AsyncSession, user_id: str, role: RoleEnum):
+    options = [selectinload(User.role), selectinload(User.files)]
+    if role == RoleEnum.DOCTOR:
+        options.append(selectinload(User.doctor))
+    elif role == RoleEnum.PATIENT:
+        options.append(selectinload(User.patient))
+
+    result = await db.execute(select(User).options(*options).where(User.id == user_id))
+
+    return result.scalar_one_or_none()
+
+
 async def login_user(
     db: AsyncSession,
     email: str,
@@ -186,13 +198,10 @@ async def login_user(
             await db.commit()
             await db.refresh(user)
 
-        # Load user with role and files
-        result = await db.execute(
-            select(User)
-            .options(selectinload(User.role), selectinload(User.files))
-            .where(User.id == user.id)
-        )
-        user_with_details = result.scalar_one()
+        # Load user with role-specific profile details and files
+        user_with_details = await get_authenticated_user(db, user.id, user.role.role)
+        if not user_with_details:
+            raise HTTPException(status_code=404, detail="User not found")
 
         payload = JwtPayload(
             sub=user_with_details.id,
