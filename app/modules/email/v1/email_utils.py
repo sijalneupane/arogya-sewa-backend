@@ -21,20 +21,25 @@ async def send_patient_signup_email(
         to=[patient_email],
         subject="Welcome to Arogya Sewa - Patient Registration Confirmed",
         html=(
-            f"<p>Hello {safe_name},</p>"
-            "<p>Thank you for registering on Arogya Sewa!</p>"
-            "<p>Your patient account has been successfully created. "
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>Welcome to Arogya Sewa, {safe_name}!</h2>"
+            "<p style='color: #666; line-height: 1.5;'>Thank you for registering on Arogya Sewa!</p>"
+            "<p style='color: #666; line-height: 1.5;'>Your patient account has been successfully created. "
             "You can now sign in to your account and book appointments with doctors.</p>"
-            "<p><strong>Key features:</strong></p>"
-            "<ul>"
+            "<p style='color: #333; font-weight: bold;'>Key features:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
             "<li>Browse available doctors and specialists</li>"
             "<li>Book appointments at your convenience</li>"
             "<li>View your appointment history</li>"
             "<li>Manage your health records</li>"
             "</ul>"
-            "<p>If you have any questions or face any issues, please contact our support team.</p>"
-            "<p>Welcome aboard!</p>"
-            "<p>Best regards,<br>Arogya Sewa Team</p>"
+            "<p style='color: #666; line-height: 1.5;'>If you have any questions or face any issues, please contact our support team.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Welcome aboard!</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
         ),
         text_fallback=(
             f"Hello {patient_name},\n\n"
@@ -118,19 +123,23 @@ async def send_doctor_creation_email(
         to=[doctor_email],
         subject="Your Doctor Account on Arogya Sewa has been Created",
         html=(
-            f"<p>Hello Dr. {safe_doctor_name},</p>"
-            "<p>Welcome to Arogya Sewa!</p>"
-            f"<p>Your doctor account has been successfully created{department_info_html}{hospital_info_html}.</p>"
-            "<p>You can now sign in to your account and:</p>"
-            "<ul>"
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>Welcome to Arogya Sewa, Dr. {safe_doctor_name}!</h2>"
+            "<p style='color: #666; line-height: 1.5;'>Your doctor account has been successfully created{department_info_html}{hospital_info_html}.</p>"
+            "<p style='color: #666; line-height: 1.5;'>You can now sign in to your account and:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
             "<li>Manage your appointment schedule</li>"
             "<li>Set your availability slots</li>"
             "<li>View patient appointments</li>"
             "<li>Track appointment history</li>"
             "</ul>"
-            "<p>Please complete your profile and update any additional information if needed.</p>"
-            "<p>If you have any questions, please contact the hospital administration.</p>"
-            "<p>Best regards,<br>Arogya Sewa Team</p>"
+            "<p style='color: #666; line-height: 1.5;'>Please complete your profile and update any additional information if needed.</p>"
+            "<p style='color: #666; line-height: 1.5;'>If you have any questions, please contact the hospital administration.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
         ),
         text_fallback=(
             f"Hello Dr. {doctor_name},\n\n"
@@ -168,25 +177,30 @@ async def send_hospital_creation_email(
         to=[admin_email],
         subject="Your Hospital has been Successfully Registered on Arogya Sewa",
         html=(
-            f"<p>Hello {safe_admin_name},</p>"
-            "<p>Congratulations! Your hospital has been successfully registered on Arogya Sewa.</p>"
-            "<p><strong>Hospital Details:</strong></p>"
-            "<ul>"
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>Congratulations, {safe_admin_name}!</h2>"
+            "<p style='color: #666; line-height: 1.5;'>Your hospital has been successfully registered on Arogya Sewa.</p>"
+            "<p style='color: #333; font-weight: bold;'>Hospital Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
             f"<li>Hospital Name: {safe_hospital_name}</li>"
             f"<li>Location: {safe_hospital_location}</li>"
             f"<li>Contact Number: {safe_contact_number}</li>"
             "</ul>"
-            "<p>As the hospital administrator, you can now:</p>"
-            "<ul>"
+            "<p style='color: #666; line-height: 1.5;'>As the hospital administrator, you can now:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
             "<li>Add and manage doctors</li>"
             "<li>Create and manage departments</li>"
             "<li>View all appointments</li>"
             "<li>Track payment information</li>"
             "<li>Manage hospital information</li>"
             "</ul>"
-            "<p>Please log in to your account to complete your hospital setup and add doctors.</p>"
-            "<p>If you need any assistance, please contact our support team.</p>"
-            "<p>Best regards,<br>Arogya Sewa Team</p>"
+            "<p style='color: #666; line-height: 1.5;'>Please log in to your account to complete your hospital setup and add doctors.</p>"
+            "<p style='color: #666; line-height: 1.5;'>If you need any assistance, please contact our support team.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
         ),
         text_fallback=(
             f"Hello {admin_name},\n\n"
@@ -237,6 +251,19 @@ async def send_appointment_booked_email(
             "Please arrive at least 10 minutes before your appointment time.\n"
             "If you need to reschedule or cancel, please log into your account.\n"
         )
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>Your appointment has been successfully booked!</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>Please arrive at least 10 minutes before your appointment time.</p>"
+            "<p style='color: #666; line-height: 1.5;'>If you need to reschedule or cancel, please log into your account.</p>"
+        )
     elif recipient_type == "doctor":
         subject = "New Appointment Scheduled"
         opening = f"Hello Dr. {recipient_name},"
@@ -249,6 +276,18 @@ async def send_appointment_booked_email(
             f"- Time: {appointment_time}\n"
             f"- Appointment ID: {appointment_id}\n\n"
             "Please log into your account to view the full patient details and appointment information.\n"
+        )
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>A new appointment has been scheduled for you.</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>Please log into your account to view the full patient details and appointment information.</p>"
         )
     else:  # hospital_admin
         subject = "New Appointment Booked at Your Hospital"
@@ -263,15 +302,33 @@ async def send_appointment_booked_email(
             f"- Appointment ID: {appointment_id}\n\n"
             "Please log into your admin panel to view all appointment details.\n"
         )
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>A new appointment has been booked at your hospital.</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>Please log into your admin panel to view all appointment details.</p>"
+        )
 
     await service.send_html_email(
         to=[recipient_email],
         subject=subject,
         html=(
-            f"<p>{escape(opening)}</p>"
-            f"<p>{escape(body).replace(chr(10), '<br>')}</p>"
-            "<p>If you have any questions, please contact our support team.</p>"
-            "<p>Best regards,<br>Arogya Sewa Team</p>"
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>{subject}</h2>"
+            f"<p style='color: #666; line-height: 1.5;'>{escape(opening)}</p>"
+            f"{body_html}"
+            "<p style='color: #666; line-height: 1.5;'>If you have any questions, please contact our support team.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
         ),
         text_fallback=(
             f"{opening}\n\n"
@@ -321,6 +378,29 @@ async def send_appointment_payment_confirmed_email(
             "\nPlease arrive at least 10 minutes before your appointment time.\n"
             "Your appointment is confirmed and ready.\n"
         )
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>Your payment for the appointment has been confirmed!</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>Payment Information:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Amount Paid: Rs. {paid_amount:.2f}</li>"
+        )
+        if remaining_due and remaining_due > 0:
+            body_html += f"<li>Remaining Amount Due: Rs. {remaining_due:.2f}</li>"
+        else:
+            body_html += "<li>Full payment completed!</li>"
+        body_html += (
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>Please arrive at least 10 minutes before your appointment time.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Your appointment is confirmed and ready.</p>"
+        )
     elif recipient_type == "doctor":
         subject = "Appointment Payment Confirmed"
         opening = f"Hello Dr. {recipient_name},"
@@ -340,6 +420,28 @@ async def send_appointment_payment_confirmed_email(
         else:
             body += "- Full payment completed!\n"
         body += "\nThe appointment is confirmed and ready to proceed.\n"
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>Payment has been confirmed for your scheduled appointment.</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>Payment Information:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Amount Received: Rs. {paid_amount:.2f}</li>"
+        )
+        if remaining_due and remaining_due > 0:
+            body_html += f"<li>Remaining Amount Due: Rs. {remaining_due:.2f}</li>"
+        else:
+            body_html += "<li>Full payment completed!</li>"
+        body_html += (
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>The appointment is confirmed and ready to proceed.</p>"
+        )
     else:  # hospital_admin
         subject = "Appointment Payment Confirmed"
         opening = f"Hello {recipient_name},"
@@ -359,15 +461,43 @@ async def send_appointment_payment_confirmed_email(
         else:
             body += "- Full payment completed!\n"
         body += "\nPlease log into your admin panel for complete payment details.\n"
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>Payment has been confirmed for an appointment at your hospital.</p>"
+            "<p style='color: #333; font-weight: bold;'>Appointment Details:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Date: {escape(appointment_date)}</li>"
+            f"<li>Time: {escape(appointment_time)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>Payment Information:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Amount Received: Rs. {paid_amount:.2f}</li>"
+        )
+        if remaining_due and remaining_due > 0:
+            body_html += f"<li>Remaining Amount Due: Rs. {remaining_due:.2f}</li>"
+        else:
+            body_html += "<li>Full payment completed!</li>"
+        body_html += (
+            "</ul>"
+            "<p style='color: #666; line-height: 1.5;'>Please log into your admin panel for complete payment details.</p>"
+        )
 
     await service.send_html_email(
         to=[recipient_email],
         subject=subject,
         html=(
-            f"<p>{escape(opening)}</p>"
-            f"<p>{escape(body).replace(chr(10), '<br>')}</p>"
-            "<p>If you have any questions, please contact our support team.</p>"
-            "<p>Best regards,<br>Arogya Sewa Team</p>"
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>{subject}</h2>"
+            f"<p style='color: #666; line-height: 1.5;'>{escape(opening)}</p>"
+            f"{body_html}"
+            "<p style='color: #666; line-height: 1.5;'>If you have any questions, please contact our support team.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
         ),
         text_fallback=(
             f"{opening}\n\n"
@@ -414,6 +544,25 @@ async def send_appointment_time_changed_email(
         if change_reason:
             body += f"Reason for Change: {change_reason}\n\n"
         body += "Please update your schedule accordingly. Please arrive at least 10 minutes before the new appointment time.\n"
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>Your appointment has been rescheduled to a new time.</p>"
+            "<p style='color: #333; font-weight: bold;'>Previous Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(old_appointment_date)}</li>"
+            f"<li>Time: {escape(old_appointment_time)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>New Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(new_appointment_date)}</li>"
+            f"<li>Time: {escape(new_appointment_time)}</li>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+        )
+        if change_reason:
+            body_html += f"<p style='color: #666; line-height: 1.5;'>Reason for Change: {escape(change_reason)}</p>"
+        body_html += "<p style='color: #666; line-height: 1.5;'>Please update your schedule accordingly. Please arrive at least 10 minutes before the new appointment time.</p>"
     elif recipient_type == "doctor":
         subject = "Appointment Time has been Changed"
         opening = f"Hello Dr. {recipient_name},"
@@ -432,6 +581,25 @@ async def send_appointment_time_changed_email(
         if change_reason:
             body += f"Reason for Change: {change_reason}\n\n"
         body += "Please update your schedule accordingly.\n"
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>One of your scheduled appointments has been rescheduled.</p>"
+            "<p style='color: #333; font-weight: bold;'>Previous Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(old_appointment_date)}</li>"
+            f"<li>Time: {escape(old_appointment_time)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>New Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(new_appointment_date)}</li>"
+            f"<li>Time: {escape(new_appointment_time)}</li>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Hospital: {escape(hospital_name)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+        )
+        if change_reason:
+            body_html += f"<p style='color: #666; line-height: 1.5;'>Reason for Change: {escape(change_reason)}</p>"
+        body_html += "<p style='color: #666; line-height: 1.5;'>Please update your schedule accordingly.</p>"
     else:  # hospital_admin
         subject = "Appointment Time Changed at Your Hospital"
         opening = f"Hello {recipient_name},"
@@ -450,11 +618,42 @@ async def send_appointment_time_changed_email(
         if change_reason:
             body += f"Reason for Change: {change_reason}\n\n"
         body += "Please log into your admin panel for complete details.\n"
+        body_html = (
+            "<p style='color: #666; line-height: 1.5;'>An appointment has been rescheduled at your hospital.</p>"
+            "<p style='color: #333; font-weight: bold;'>Previous Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(old_appointment_date)}</li>"
+            f"<li>Time: {escape(old_appointment_time)}</li>"
+            "</ul>"
+            "<p style='color: #333; font-weight: bold;'>New Appointment Time:</p>"
+            "<ul style='color: #666; line-height: 1.5;'>"
+            f"<li>Date: {escape(new_appointment_date)}</li>"
+            f"<li>Time: {escape(new_appointment_time)}</li>"
+            f"<li>Patient: {escape(patient_name)}</li>"
+            f"<li>Doctor: Dr. {escape(doctor_name)}</li>"
+            f"<li>Appointment ID: {escape(appointment_id)}</li>"
+            "</ul>"
+        )
+        if change_reason:
+            body_html += f"<p style='color: #666; line-height: 1.5;'>Reason for Change: {escape(change_reason)}</p>"
+        body_html += "<p style='color: #666; line-height: 1.5;'>Please log into your admin panel for complete details.</p>"
 
-    await service.send_text_email(
+    await service.send_html_email(
         to=[recipient_email],
         subject=subject,
-        text=(
+        html=(
+            "<div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; "
+            "padding: 20px; background-color: #f9f9f9;'>"
+            "<div style='background-color: white; padding: 20px; border-radius: 8px;'>"
+            f"<h2 style='color: #333; margin-bottom: 15px;'>{subject}</h2>"
+            f"<p style='color: #666; line-height: 1.5;'>{escape(opening)}</p>"
+            f"{body_html}"
+            "<p style='color: #666; line-height: 1.5;'>If you have any questions, please contact our support team.</p>"
+            "<p style='color: #666; line-height: 1.5;'>Best regards,<br>Arogya Sewa Team</p>"
+            "</div>"
+            "</div>"
+        ),
+        text_fallback=(
             f"{opening}\n\n"
             f"{body}"
             "If you have any questions, please contact our support team.\n\n"
