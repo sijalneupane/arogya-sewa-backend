@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.configuration.mailgun_config import get_mailgun_service
@@ -27,6 +27,7 @@ from app.modules.auth.v1.service import (
     reset_user_password,
     send_password_reset_otp,
     signup_patient,
+    update_authenticated_user_fcm_token,
     update_user_password,
     verify_otp,
 )
@@ -191,13 +192,27 @@ async def change_password_route(
 async def get_current_user_route(
     current_user: JwtPayload = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    fcm_token: str | None = Query(
+        default=None,
+        max_length=255,
+        description="Optional FCM token to store for the authenticated user",
+    ),
 ):
     """Get the currently authenticated user's details."""
-    user = await get_authenticated_user(
-        db=db,
-        user_id=current_user.sub,
-        role=current_user.role,
-    )
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if fcm_token is not None:
+        user = await update_authenticated_user_fcm_token(
+            db=db,
+            user_id=current_user.sub,
+            role=current_user.role,
+            fcm_token=fcm_token,
+        )
+    else:
+        user = await get_authenticated_user(
+            db=db,
+            user_id=current_user.sub,
+            role=current_user.role,
+        )
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
     return AuthUserByIdResponse(data=AuthenticatedUserResponse.model_validate(user))

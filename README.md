@@ -80,6 +80,7 @@ Notes:
 | `POST` | `/signup/patient` | Register patient + user | Public |
 | `POST` | `/signup/super-admin` | Register super admin | Public |
 | `POST` | `/login` | Login and receive access/refresh tokens | Public |
+| `GET` | `/me` | Get current authenticated user and optionally update their FCM token via query param | Authenticated |
 
 ### Users (`/api/v1/users`)
 

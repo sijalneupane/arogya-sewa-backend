@@ -182,6 +182,24 @@ async def get_authenticated_user(db: AsyncSession, user_id: str, role: RoleEnum)
     return result.scalar_one_or_none()
 
 
+async def update_authenticated_user_fcm_token(
+    db: AsyncSession,
+    user_id: str,
+    role: RoleEnum,
+    fcm_token: str,
+):
+    user = await get_authenticated_user(db=db, user_id=user_id, role=role)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if fcm_token != user.fcm_token:
+        user.fcm_token = fcm_token
+        await db.commit()
+        await db.refresh(user)
+
+    return user
+
+
 async def login_user(
     db: AsyncSession,
     email: str,
