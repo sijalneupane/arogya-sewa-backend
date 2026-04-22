@@ -84,3 +84,22 @@ class AvailabilityDetailResponseSchema(BaseModel):
 
     message: str = "Availability fetched successfully"
     data: AvailabilityResponseSchema
+
+
+class FutureAvailabilitySummarySchema(BaseModel):
+    """Summary counts for a doctor's future availabilities"""
+
+    total_future_slots: int = 0
+    future_booked_slots: int = 0
+    future_open_slots: int = 0
+    total_booked_slots_till_now: int = 0
+    total_slots: int = 0
+
+
+class DoctorFutureAvailabilityListResponseSchema(BaseModel):
+    """Schema for a doctor's future availability list with summary counts"""
+
+    message: str = "Availabilities fetched successfully"
+    data: list[AvailabilityResponseSchema]
+    future_summary: FutureAvailabilitySummarySchema
+    paginationMeta: Any

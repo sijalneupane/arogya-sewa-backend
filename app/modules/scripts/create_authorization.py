@@ -286,6 +286,7 @@ def getDoctorPermissions(role: Role) -> List[Authorization]:
         ),
         setAuthorizationPermissions(role, "/api/v1/doctors/{doctor_id}", writeMethods),
         setAuthorizationPermissions(role, "/api/v1/availabilities", postMethod),
+        setAuthorizationPermissions(role, "/api/v1/availabilities/me", readOnlyMethods),
         setAuthorizationPermissions(
             role,
             "/api/v1/availabilities/{availability_id}",

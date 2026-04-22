@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -134,6 +134,76 @@ async def get_availabilities_by_doctor(
 
     result = await db.execute(query)
     return list(result.scalars().all()), total
+
+
+async def get_availability_summary_by_doctor(
+    db: AsyncSession, doctor_id: str
+) -> dict[str, int]:
+    """Get summary counts for all availabilities belonging to a doctor."""
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(
+            func.count(Availability.availability_id).label("total_slots"),
+            func.coalesce(
+                func.sum(case((Availability.start_date_time >= now, 1), else_=0)), 0
+            ).label("total_future_slots"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time >= now,
+                                Availability.is_booked.is_(True),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("future_booked_slots"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time >= now,
+                                Availability.is_booked.is_(False),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("future_open_slots"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time < now,
+                                Availability.is_booked.is_(True),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("total_booked_slots_till_now"),
+        ).where(Availability.doctor_id == doctor_id)
+    )
+
+    summary = result.one()
+    return {
+        "total_future_slots": int(summary.total_future_slots or 0),
+        "future_booked_slots": int(summary.future_booked_slots or 0),
+        "future_open_slots": int(summary.future_open_slots or 0),
+        "total_booked_slots_till_now": int(summary.total_booked_slots_till_now or 0),
+        "total_slots": int(summary.total_slots or 0),
+    }
 
 
 async def get_all_availabilities(
