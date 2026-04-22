@@ -171,6 +171,7 @@ async def create_changed_time(
     from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 
     appointment.status = AppointmentStatusEnum.RESCHEDULED
+    appointment.has_reminded = False
 
     # Create changed time record
     changed_time_id = StringUtils.randomAlphaNumeric(12)
@@ -282,10 +283,14 @@ async def update_changed_time(
     if not changed_time:
         raise HTTPException(status_code=404, detail="Changed time record not found")
 
+    time_changed = False
+
     if start_date_time is not None:
         changed_time.start_date_time = start_date_time
+        time_changed = True
     if end_date_time is not None:
         changed_time.end_date_time = end_date_time
+        time_changed = True
     if reason is not None:
         changed_time.reason = reason
 
@@ -300,6 +305,10 @@ async def update_changed_time(
         )
         appointment = appointment_result.scalar_one_or_none()
         if appointment:
+            if time_changed:
+                appointment.has_reminded = False
+                await db.commit()
+
             patient_result = await db.execute(
                 select(Patient)
                 .options(selectinload(Patient.user))

@@ -3,14 +3,16 @@ from datetime import date, datetime, timezone
 from typing import Optional
 
 from fastapi import HTTPException
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
 from app.common.enums.notification_type_enum import NotificationTypeEnum
+from app.common.enums.payment_status_enum import PaymentStatusEnum
 from app.common.enums.role_enum import RoleEnum
 from app.core.utils.string_utils import StringUtils
+from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
 from app.modules.appointment.v1.models import Appointment
 from app.modules.availability.v1.models import Availability
 from app.modules.doctor.v1.models import Doctor
@@ -218,6 +220,107 @@ async def get_appointment_by_id(
         .where(Appointment.appointment_id == appointment_id)
     )
     return result.scalar_one_or_none()
+
+
+async def get_appointments_for_reminders(
+    db: AsyncSession,
+    reminder_start_time: datetime,
+    reminder_end_time: datetime,
+) -> list[Appointment]:
+    """Get appointments that need reminder notifications within a time window."""
+    result = await db.execute(
+        select(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .options(
+            selectinload(Appointment.availability),
+            selectinload(Appointment.changed_times),
+            selectinload(Appointment.patient).selectinload(Patient.user),
+            selectinload(Appointment.doctor).selectinload(Doctor.user),
+        )
+        .where(
+            Appointment.has_reminded.is_(False),
+            Appointment.status.in_(
+                [
+                    AppointmentStatusEnum.CONFIRMED,
+                    AppointmentStatusEnum.RESCHEDULED,
+                ]
+            ),
+            Appointment.payment_status != PaymentStatusEnum.UNPAID,
+            or_(
+                and_(
+                    Availability.start_date_time >= reminder_start_time,
+                    Availability.start_date_time < reminder_end_time,
+                ),
+                exists(
+                    select(AppointmentChangedTime.changed_time_id).where(
+                        AppointmentChangedTime.appointment_id
+                        == Appointment.appointment_id,
+                        AppointmentChangedTime.start_date_time >= reminder_start_time,
+                        AppointmentChangedTime.start_date_time < reminder_end_time,
+                    )
+                ),
+            ),
+        )
+    )
+    return list(result.scalars().unique().all())
+
+
+async def mark_appointments_as_reminded(
+    db: AsyncSession, appointment_ids: list[str]
+) -> None:
+    if not appointment_ids:
+        return
+
+    await db.execute(
+        update(Appointment)
+        .where(Appointment.appointment_id.in_(appointment_ids))
+        .values(has_reminded=True)
+    )
+    await db.commit()
+
+
+async def get_upcoming_appointments_for_reminders(
+    db: AsyncSession,
+    start_date_time: datetime,
+    end_date_time: datetime,
+) -> list[Appointment]:
+    """Get appointments that fall inside the reminder window."""
+    query = (
+        select(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .options(
+            selectinload(Appointment.availability),
+            selectinload(Appointment.changed_times),
+            selectinload(Appointment.patient).selectinload(Patient.user),
+            selectinload(Appointment.doctor).selectinload(Doctor.user),
+        )
+        .where(
+            Appointment.status.in_(
+                [
+                    AppointmentStatusEnum.CONFIRMED,
+                    AppointmentStatusEnum.RESCHEDULED,
+                ]
+            ),
+            Appointment.payment_status != PaymentStatusEnum.UNPAID,
+            or_(
+                and_(
+                    Availability.start_date_time >= start_date_time,
+                    Availability.start_date_time < end_date_time,
+                ),
+                exists(
+                    select(AppointmentChangedTime.changed_time_id).where(
+                        AppointmentChangedTime.appointment_id
+                        == Appointment.appointment_id,
+                        AppointmentChangedTime.start_date_time >= start_date_time,
+                        AppointmentChangedTime.start_date_time < end_date_time,
+                    )
+                ),
+            ),
+        )
+    )
+
+    result = await db.execute(query)
+    return list(result.scalars().unique().all())
 
 
 async def update_appointment(

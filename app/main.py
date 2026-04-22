@@ -13,6 +13,7 @@ from app.core.configuration.cloudinary_config import configure_cloudinary
 from app.core.configuration.firebase_config import init_firebase
 from app.core.configuration.khalti_config import init_khalti
 from app.core.configuration.mailgun_config import init_mailgun
+from app.core.scheduler.manager import shutdown_app_scheduler, start_app_scheduler
 from app.modules.appointment.v1 import changed_time_router
 from app.modules.appointment.v1 import router as appointment_router
 from app.modules.auth.v1 import router as auth_router
@@ -40,8 +41,10 @@ def startup_event():
 async def lifespan(app: FastAPI):
     # Startup code
     startup_event()
+    start_app_scheduler()
     yield
     # Shutdown code (if any)
+    shutdown_app_scheduler()
 
 
 app = FastAPI(title=settings.APP_NAME, version=settings.VERSION, lifespan=lifespan)

@@ -1,7 +1,7 @@
 from datetime import date as date_type
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Date, Enum as SQLEnum, Float, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, Enum as SQLEnum, Float, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
@@ -45,6 +45,9 @@ class Appointment(Base, TimestampMixin):
     paid_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     due_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     advance_fee: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    has_reminded: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false", index=True
+    )
     payment_status: Mapped[PaymentStatusEnum] = mapped_column(
         SQLEnum(
             PaymentStatusEnum,
