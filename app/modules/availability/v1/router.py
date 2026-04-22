@@ -15,19 +15,18 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.availability.v1.schema import (
     AvailabilityCreateSchema,
     AvailabilityDetailResponseSchema,
-    DoctorFutureAvailabilityListResponseSchema,
-    FutureAvailabilitySummarySchema,
     AvailabilityResponseSchema,
     AvailabilityUpdateSchema,
+    DoctorFutureAvailabilityListResponseSchema,
+    FutureAvailabilitySummarySchema,
 )
 from app.modules.availability.v1.service import (
-    # can_user_modify_availability,
     create_availability,
     delete_availability,
-    get_availability_summary_by_doctor,
     get_all_availabilities,
     get_availabilities_by_doctor,
     get_availability_by_id,
+    get_availability_summary_by_doctor,
     update_availability,
 )
 from app.modules.doctor.v1.service import get_doctor_by_user_id

@@ -184,6 +184,21 @@ async def get_availability_summary_by_doctor(
                         (
                             and_(
                                 Availability.start_date_time < now,
+                                Availability.is_booked.is_(False),
+                            ),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ),
+                0,
+            ).label("past_open_slots"),
+            func.coalesce(
+                func.sum(
+                    case(
+                        (
+                            and_(
+                                Availability.start_date_time < now,
                                 Availability.is_booked.is_(True),
                             ),
                             1,
@@ -201,6 +216,7 @@ async def get_availability_summary_by_doctor(
         "total_future_slots": int(summary.total_future_slots or 0),
         "future_booked_slots": int(summary.future_booked_slots or 0),
         "future_open_slots": int(summary.future_open_slots or 0),
+        "past_open_slots": int(summary.past_open_slots or 0),
         "total_booked_slots_till_now": int(summary.total_booked_slots_till_now or 0),
         "total_slots": int(summary.total_slots or 0),
     }

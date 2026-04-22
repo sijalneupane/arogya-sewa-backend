@@ -92,6 +92,7 @@ class FutureAvailabilitySummarySchema(BaseModel):
     total_future_slots: int = 0
     future_booked_slots: int = 0
     future_open_slots: int = 0
+    past_open_slots: int = 0
     total_booked_slots_till_now: int = 0
     total_slots: int = 0
 
