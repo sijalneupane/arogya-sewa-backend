@@ -499,6 +499,7 @@ async def complete_appointment(
         )
 
     appointment.status = AppointmentStatusEnum.COMPLETED
+    appointment.completed_at = datetime.now(timezone.utc)
 
     await db.commit()
     await db.refresh(appointment)

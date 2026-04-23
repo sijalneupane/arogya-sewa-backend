@@ -1,7 +1,17 @@
-from datetime import date as date_type
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, Date, Enum as SQLEnum, Float, ForeignKey, String, Text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    String,
+    Text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.common.enums.appointment_status_enum import AppointmentStatusEnum
@@ -13,8 +23,8 @@ if TYPE_CHECKING:
     from app.modules.appointment.v1.changed_time_models import AppointmentChangedTime
     from app.modules.availability.v1.models import Availability
     from app.modules.doctor.v1.models import Doctor
-    from app.modules.payment.v1.models import Payment
     from app.modules.patient.v1.models import Patient
+    from app.modules.payment.v1.models import Payment
     from app.modules.user.v1.models import User
 
 
@@ -45,6 +55,9 @@ class Appointment(Base, TimestampMixin):
     paid_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     due_amount: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     advance_fee: Mapped[float] = mapped_column(Float, nullable=False, default=0)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
     has_reminded: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false", index=True
     )

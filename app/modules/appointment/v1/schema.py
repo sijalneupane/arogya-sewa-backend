@@ -14,7 +14,6 @@ from app.modules.doctor.v1.schema import DoctorResponseSchema
 from app.modules.patient.v1.schema import PatientResponse
 from app.modules.user.v1.schema import UserResponse
 
-
 # class ChangedTimeInfo(BaseModel):
 #     """Changed time information for appointment response"""
 
@@ -98,6 +97,7 @@ class AppointmentResponseSchema(BaseModel):
     paid_amount: float
     due_amount: float
     advance_fee: float
+    completed_at: Optional[datetime] = None
     payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     created_at: datetime
@@ -121,6 +121,7 @@ class AppointmentDetailResponseSchema(BaseModel):
     paid_amount: float
     due_amount: float
     advance_fee: float
+    completed_at: Optional[datetime] = None
     payment_status: PaymentStatusEnum
     status: AppointmentStatusEnum
     # booked_by_user_id: str
