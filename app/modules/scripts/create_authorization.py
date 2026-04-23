@@ -146,6 +146,9 @@ def getHospitalAdminPermissions(role: Role) -> List[Authorization]:
         setAuthorizationPermissions(
             role, "/api/v1/appointments/hospital-admin/appointments", readOnlyMethods
         ),
+        setAuthorizationPermissions(
+            role, "/api/v1/appointments/{appointment_id}/completed", ["PATCH"]
+        ),
         # Hospital admin can create appointment changed times for appointments in their hospital
         setAuthorizationPermissions(
             role, "/api/v1/appointment-changed-times", postMethod
