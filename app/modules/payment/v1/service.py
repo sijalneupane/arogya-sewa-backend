@@ -309,7 +309,7 @@ class PaymentService:
             payment.transaction_id = khalti_response.get("transaction_id")
             payment.paid_at = datetime.now(timezone.utc)
             appointment.payment_status = PaymentStatusEnum.PARTIAL
-            appointment.status = AppointmentStatusEnum.INPROGRESS
+            appointment.status = AppointmentStatusEnum.CONFIRMED
             appointment.paid_amount = self._round_money(payment.amount)
             appointment.due_amount = self._round_money(
                 appointment.total_amount - appointment.paid_amount
@@ -360,10 +360,10 @@ class PaymentService:
                     db=self.db,
                     receiver_user_id=patient.user.id,
                     notification_type=NotificationTypeEnum.PAYMENT,
-                    title="Appointment Verified Successfully",
+                    title="Appointment Confirmed Successfully",
                     body=(
                         f"Your appointment with Dr. {doctor.user.name} has been "
-                        f"verified successfully."
+                        f"confirmed and advance payment is verified successfully."
                     ),
                     notification_data={
                         "appointment_id": notification_appointment.appointment_id,
