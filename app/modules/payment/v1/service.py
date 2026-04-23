@@ -309,7 +309,7 @@ class PaymentService:
             payment.transaction_id = khalti_response.get("transaction_id")
             payment.paid_at = datetime.now(timezone.utc)
             appointment.payment_status = PaymentStatusEnum.PARTIAL
-            appointment.status = AppointmentStatusEnum.CONFIRMED
+            appointment.status = AppointmentStatusEnum.INPROGRESS
             appointment.paid_amount = self._round_money(payment.amount)
             appointment.due_amount = self._round_money(
                 appointment.total_amount - appointment.paid_amount
@@ -506,7 +506,7 @@ class PaymentService:
             )
             appointment.due_amount = 0
             appointment.payment_status = PaymentStatusEnum.PAID
-            appointment.status = AppointmentStatusEnum.COMPLETED
+            appointment.status = AppointmentStatusEnum.INPROGRESS
 
         elif status == "Pending":
             payment.status = PaymentTransactionStatusEnum.PENDING
@@ -623,7 +623,7 @@ class PaymentService:
         )
         appointment.due_amount = 0
         appointment.payment_status = PaymentStatusEnum.PAID
-        appointment.status = AppointmentStatusEnum.COMPLETED
+        appointment.status = AppointmentStatusEnum.INPROGRESS
 
         self.db.add(payment)
         await self.db.commit()

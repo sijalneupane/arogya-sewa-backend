@@ -367,6 +367,67 @@ async def update_appointment(
     return appointment_with_relations
 
 
+async def complete_appointment(
+    db: AsyncSession,
+    appointment_id: str,
+    user_id: str,
+    user_role: RoleEnum,
+) -> Appointment:
+    """Mark an in-progress appointment as completed after dues are cleared."""
+    appointment = await get_appointment_by_id(db, appointment_id)
+
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if appointment.payment_status != PaymentStatusEnum.PAID or appointment.due_amount > 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Appointment can only be completed after all dues are cleared",
+        )
+
+    if appointment.status != AppointmentStatusEnum.INPROGRESS:
+        raise HTTPException(
+            status_code=400,
+            detail="Only in-progress appointments can be marked as completed",
+        )
+
+    if user_role == RoleEnum.DOCTOR:
+        doctor_result = await db.execute(
+            select(Doctor).where(Doctor.user_id == user_id)
+        )
+        doctor = doctor_result.scalar_one_or_none()
+
+        if not doctor or appointment.doctor_id != doctor.doctor_id:
+            raise HTTPException(
+                status_code=403,
+                detail="You can only complete your own appointments",
+            )
+    elif user_role == RoleEnum.HOSPITAL_ADMIN:
+        can_modify = await can_user_modify_appointment(
+            db=db,
+            user_id=user_id,
+            user_role=user_role,
+            appointment=appointment,
+        )
+        if not can_modify:
+            raise HTTPException(
+                status_code=403,
+                detail="You don't have permission to complete this appointment",
+            )
+    else:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctors and hospital admins can complete appointments",
+        )
+
+    appointment.status = AppointmentStatusEnum.COMPLETED
+
+    await db.commit()
+    await db.refresh(appointment)
+
+    return await get_appointment_by_id(db, appointment_id)
+
+
 async def delete_appointment(
     db: AsyncSession,
     appointment_id: str,

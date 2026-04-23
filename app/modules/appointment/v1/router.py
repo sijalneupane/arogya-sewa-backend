@@ -22,6 +22,7 @@ from app.modules.appointment.v1.schema import (
 )
 from app.modules.appointment.v1.service import (
     can_user_modify_appointment,
+    complete_appointment,
     create_appointment,
     delete_appointment,
     get_all_appointments_super_admin,
@@ -595,6 +596,12 @@ async def update_appointment_endpoint(
             detail="You don't have permission to update this appointment",
         )
 
+    if data.status == AppointmentStatusEnum.COMPLETED:
+        raise HTTPException(
+            status_code=400,
+            detail="Use the completion endpoint to mark an appointment as completed",
+        )
+
     # Update the appointment
     updated_appointment = await update_appointment(
         db=db,
@@ -613,6 +620,42 @@ async def update_appointment_endpoint(
 
     return AppointmentSingleResponse(
         message="Appointment updated successfully",
+        data=appointment_detail,
+    )
+
+
+@router.patch(
+    "/{appointment_id}/complete",
+    summary="Mark appointment as completed",
+)
+async def complete_appointment_endpoint(
+    appointment_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: JwtPayload = Depends(get_current_user),
+    _=Depends(authorize),
+) -> AppointmentSingleResponse:
+    """Mark an appointment as completed after the remaining dues are cleared."""
+    if user.role not in [RoleEnum.DOCTOR, RoleEnum.HOSPITAL_ADMIN]:
+        raise HTTPException(
+            status_code=403,
+            detail="Only doctors and hospital admins can complete appointments",
+        )
+
+    updated_appointment = await complete_appointment(
+        db=db,
+        appointment_id=appointment_id,
+        user_id=user.sub,
+        user_role=user.role,
+    )
+
+    from app.modules.appointment.v1.schema import AppointmentDetailResponseSchema
+
+    appointment_detail = AppointmentDetailResponseSchema.model_validate(
+        updated_appointment
+    )
+
+    return AppointmentSingleResponse(
+        message="Appointment marked as completed successfully",
         data=appointment_detail,
     )
 
