@@ -6,6 +6,7 @@ hospital creation, appointment booking, and appointment changes.
 
 from html import escape
 
+from app.core import logging_config
 from app.modules.email.v1.mailgun_service import MailgunGateway
 
 
@@ -314,7 +315,7 @@ async def send_appointment_booked_email(
             "</ul>"
             "<p style='color: #666; line-height: 1.5;'>Please log into your admin panel to view all appointment details.</p>"
         )
-
+    
     await service.send_html_email(
         to=[recipient_email],
         subject=subject,

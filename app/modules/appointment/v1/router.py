@@ -35,6 +35,7 @@ from app.modules.auth.v1.schemas import JwtPayload
 from app.modules.doctor.v1.models import Doctor
 from app.modules.email.v1.email_utils import send_appointment_booked_email
 from app.modules.patient.v1.models import Patient
+from app.modules.user.v1.models import User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(
@@ -143,23 +144,26 @@ async def book_appointment(
             )
 
             # Send email to hospital admin if hospital exists
-            if (
-                full_appointment.doctor.hospital
-                and full_appointment.doctor.hospital.admin
-            ):
-                admin = full_appointment.doctor.hospital.admin
-                await send_appointment_booked_email(
-                    service=mailgun_service,
-                    recipient_name=admin.name,
-                    recipient_email=admin.email,
-                    recipient_type="hospital_admin",
-                    patient_name=patient_name,
-                    doctor_name=doctor_name,
-                    hospital_name=hospital_name,
-                    appointment_date=appointment_date,
-                    appointment_time=appointment_time,
-                    appointment_id=appointment.appointment_id,
+            hospital = full_appointment.doctor.hospital
+            if hospital:
+                admin_result = await db.execute(
+                    select(User).where(User.id == hospital.admin_id)
                 )
+                admin = admin_result.scalar_one_or_none()
+
+                if admin:
+                    await send_appointment_booked_email(
+                        service=mailgun_service,
+                        recipient_name=admin.name,
+                        recipient_email=admin.email,
+                        recipient_type="hospital_admin",
+                        patient_name=patient_name,
+                        doctor_name=doctor_name,
+                        hospital_name=hospital_name,
+                        appointment_date=appointment_date,
+                        appointment_time=appointment_time,
+                        appointment_id=appointment.appointment_id,
+                    )
     except Exception as exc:
         logger.warning(f"Failed to send appointment booking emails: {exc}")
 

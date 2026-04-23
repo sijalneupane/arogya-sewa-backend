@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from app.common.enums.notification_type_enum import NotificationTypeEnum
+from app.core import logging_config
 from app.db.database import AsyncSessionLocal
 from app.modules.appointment.v1.models import Appointment
 from app.modules.appointment.v1.service import (
@@ -14,7 +15,7 @@ from app.modules.notification.v1.service import send_notification
 logger = logging.getLogger(__name__)
 
 REMINDER_LEAD_TIME_HOURS = 3
-REMINDER_WINDOW_MINUTES = 15
+REMINDER_WINDOW_MINUTES = 5
 REMINDER_JOB_ID = "appointment-reminder-job"
 
 
@@ -64,9 +65,13 @@ async def _send_reminder_notification_with_session(
 
 async def send_upcoming_appointment_reminders() -> int:
     now = datetime.now(timezone.utc)
-    reminder_start_time = now + timedelta(hours=REMINDER_LEAD_TIME_HOURS)
-    reminder_end_time = reminder_start_time + timedelta(minutes=REMINDER_WINDOW_MINUTES)
-
+    reminder_start_time = now
+    reminder_end_time = now + timedelta(hours=REMINDER_LEAD_TIME_HOURS)
+    logging_config.logger.info(
+        "Checking for appointments to remind between %s and %s",
+        reminder_start_time.isoformat(),
+        reminder_end_time.isoformat(),
+    )
     async with AsyncSessionLocal() as db:
         appointments = await get_appointments_for_reminders(
             db=db,
@@ -76,6 +81,9 @@ async def send_upcoming_appointment_reminders() -> int:
 
         reminded_appointment_ids: list[str] = []
         sent_count = 0
+        logging_config.logger.info(
+            "Found %s appointments to check for reminders", len(appointments)
+        )
         for appointment in appointments:
             effective_start_time = _get_effective_start_time(appointment)
             if not (reminder_start_time <= effective_start_time < reminder_end_time):
@@ -84,7 +92,7 @@ async def send_upcoming_appointment_reminders() -> int:
             doctor_user = appointment.doctor.user if appointment.doctor else None
             patient_user = appointment.patient.user if appointment.patient else None
             if not doctor_user or not patient_user:
-                logger.warning(
+                logging_config.logger.warning(
                     "Skipping reminder for appointment %s because doctor or patient user is missing",
                     appointment.appointment_id,
                 )

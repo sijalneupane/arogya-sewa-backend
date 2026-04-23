@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
+from app.core import logging_config
 from app.core.scheduler.jobs.appointment_reminder import (
     REMINDER_JOB_ID,
     REMINDER_WINDOW_MINUTES,
@@ -16,6 +17,7 @@ app_scheduler = AsyncIOScheduler(timezone=timezone.utc)
 
 
 def register_scheduler_jobs() -> None:
+    logging_config.logger.info("Registering scheduler jobs")
     app_scheduler.add_job(
         send_upcoming_appointment_reminders,
         trigger=IntervalTrigger(minutes=REMINDER_WINDOW_MINUTES),
@@ -34,7 +36,7 @@ def start_app_scheduler() -> None:
 
     register_scheduler_jobs()
     app_scheduler.start()
-    logger.info(
+    logging_config.logger.info(
         "Application scheduler started with reminder jobs running every %s minutes",
         REMINDER_WINDOW_MINUTES,
     )
