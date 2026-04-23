@@ -30,7 +30,9 @@ def _normalize_datetime(value: datetime) -> datetime:
     return value
 
 
-def _get_effective_schedule_window(appointment: Appointment) -> tuple[datetime, datetime]:
+def _get_effective_schedule_window(
+    appointment: Appointment,
+) -> tuple[datetime, datetime]:
     availability_start = _normalize_datetime(appointment.availability.start_date_time)
     availability_end = _normalize_datetime(appointment.availability.end_date_time)
 
@@ -450,6 +452,7 @@ async def complete_appointment(
     appointment_id: str,
     user_id: str,
     user_role: RoleEnum,
+    completed_at: Optional[datetime] = None,
 ) -> Appointment:
     """Mark an in-progress appointment as completed after dues are cleared."""
     appointment = await get_appointment_by_id(db, appointment_id)
@@ -457,7 +460,10 @@ async def complete_appointment(
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    if appointment.payment_status != PaymentStatusEnum.PAID or appointment.due_amount > 0:
+    if (
+        appointment.payment_status != PaymentStatusEnum.PAID
+        or appointment.due_amount > 0
+    ):
         raise HTTPException(
             status_code=400,
             detail="Appointment can only be completed after all dues are cleared",
@@ -467,6 +473,15 @@ async def complete_appointment(
         raise HTTPException(
             status_code=400,
             detail="Only in-progress appointments can be marked as completed",
+        )
+
+    appointment_start = _normalize_datetime(appointment.availability.start_date_time)
+    completion_time = _normalize_datetime(completed_at or datetime.now(timezone.utc))
+
+    if completion_time < appointment_start:
+        raise HTTPException(
+            status_code=400,
+            detail="completed_at cannot be earlier than the appointment start time",
         )
 
     if user_role == RoleEnum.DOCTOR:
@@ -499,7 +514,7 @@ async def complete_appointment(
         )
 
     appointment.status = AppointmentStatusEnum.COMPLETED
-    appointment.completed_at = datetime.now(timezone.utc)
+    appointment.completed_at = completion_time
 
     await db.commit()
     await db.refresh(appointment)

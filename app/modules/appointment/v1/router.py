@@ -15,6 +15,7 @@ from app.core.configuration.mailgun_config import get_mailgun_service
 from app.core.security import get_current_user
 from app.db.db import get_db
 from app.modules.appointment.v1.schema import (
+    AppointmentCompleteSchema,
     AppointmentCreateSchema,
     AppointmentListResponse,
     AppointmentSingleResponse,
@@ -630,6 +631,7 @@ async def update_appointment_endpoint(
 )
 async def complete_appointment_endpoint(
     appointment_id: str,
+    data: AppointmentCompleteSchema,
     db: AsyncSession = Depends(get_db),
     user: JwtPayload = Depends(get_current_user),
     _=Depends(authorize),
@@ -646,6 +648,7 @@ async def complete_appointment_endpoint(
         appointment_id=appointment_id,
         user_id=user.sub,
         user_role=user.role,
+        completed_at=data.completed_at,
     )
 
     from app.modules.appointment.v1.schema import AppointmentDetailResponseSchema

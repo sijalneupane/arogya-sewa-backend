@@ -51,6 +51,12 @@ class AppointmentUpdateSchema(BaseModel):
     )
 
 
+class AppointmentCompleteSchema(BaseModel):
+    """Schema for marking an appointment as completed"""
+
+    completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
+
+
 # class DoctorBasicInfo(BaseModel):
 #     """Basic doctor information for appointment response"""
 
