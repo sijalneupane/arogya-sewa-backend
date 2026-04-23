@@ -8,6 +8,13 @@ def send_push(token: str, title: str, body: str, data: dict | None = None):
             title=title,
             body=body,
         ),
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                default_sound=True,
+                channel_id="high_importance_channel",  # Must match Flutter
+            ),
+        ),
         data=data or {},
     )
 
@@ -23,6 +30,13 @@ async def send_multicast_push(
             title=title,
             body=body,
         ),
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                default_sound=True,
+                channel_id="high_importance_channel",  # Must match Flutter
+            ),
+        ),
         data=data or {},
     )
 
@@ -35,6 +49,13 @@ def send_topic_push(topic: str, title: str, body: str, data: dict | None = None)
         notification=messaging.Notification(
             title=title,
             body=body,
+        ),
+        android=messaging.AndroidConfig(
+            priority="high",
+            notification=messaging.AndroidNotification(
+                default_sound=True,
+                channel_id="high_importance_channel",  # Must match Flutter
+            ),
         ),
         data=data or {},
     )
