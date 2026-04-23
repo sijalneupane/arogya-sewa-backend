@@ -24,6 +24,38 @@ from app.modules.user.v1.models import User
 logger = logging.getLogger(__name__)
 
 
+def _normalize_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def _get_effective_schedule_window(appointment: Appointment) -> tuple[datetime, datetime]:
+    availability_start = _normalize_datetime(appointment.availability.start_date_time)
+    availability_end = _normalize_datetime(appointment.availability.end_date_time)
+
+    if not appointment.changed_times:
+        return availability_start, availability_end
+
+    latest_changed_time = max(
+        appointment.changed_times,
+        key=lambda changed_time: changed_time.changed_at,
+    )
+    return (
+        _normalize_datetime(latest_changed_time.start_date_time),
+        _normalize_datetime(latest_changed_time.end_date_time),
+    )
+
+
+def _is_within_window(
+    appointment: Appointment,
+    window_start: datetime,
+    window_end: datetime,
+) -> bool:
+    effective_start, effective_end = _get_effective_schedule_window(appointment)
+    return window_start <= effective_start and effective_end <= window_end
+
+
 async def validate_availability_for_booking(
     db: AsyncSession, availability_id: str
 ) -> Availability:
@@ -263,6 +295,52 @@ async def get_appointments_for_reminders(
         )
     )
     return list(result.scalars().unique().all())
+
+
+async def get_appointments_for_auto_cancellation(
+    db: AsyncSession,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[Appointment]:
+    """Get appointments that should be auto-cancelled within a time window."""
+    result = await db.execute(
+        select(Appointment)
+        .join(Availability, Appointment.availability_id == Availability.availability_id)
+        .options(
+            selectinload(Appointment.availability),
+            selectinload(Appointment.changed_times),
+            selectinload(Appointment.patient).selectinload(Patient.user),
+            selectinload(Appointment.doctor).selectinload(Doctor.user),
+        )
+        .where(
+            Appointment.status.in_(
+                [
+                    AppointmentStatusEnum.PENDING_PAYMENT,
+                    AppointmentStatusEnum.CONFIRMED,
+                ]
+            ),
+            or_(
+                and_(
+                    Availability.start_date_time >= window_start,
+                    Availability.end_date_time <= window_end,
+                ),
+                exists(
+                    select(AppointmentChangedTime.changed_time_id).where(
+                        AppointmentChangedTime.appointment_id
+                        == Appointment.appointment_id,
+                        AppointmentChangedTime.start_date_time >= window_start,
+                        AppointmentChangedTime.end_date_time <= window_end,
+                    )
+                ),
+            ),
+        )
+    )
+    appointments = list(result.scalars().unique().all())
+    return [
+        appointment
+        for appointment in appointments
+        if _is_within_window(appointment, window_start, window_end)
+    ]
 
 
 async def mark_appointments_as_reminded(
