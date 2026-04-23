@@ -112,8 +112,8 @@ async def send_upcoming_appointment_reminders() -> int:
                 receiver_user_id=doctor_user.id,
                 title="Appointment Reminder",
                 body=(
-                    f"You have an upcoming appointment with {patient_user.name} "
-                    f"on {appointment_date} at {appointment_time}."
+                    f"You have an appointment with {patient_user.name} within 3 hours."
+                    f"Be ready to make someone life better."
                 ),
                 notification_data={
                     **reminder_payload,
@@ -124,8 +124,8 @@ async def send_upcoming_appointment_reminders() -> int:
                 receiver_user_id=patient_user.id,
                 title="Appointment Reminder",
                 body=(
-                    f"You have an upcoming appointment with Dr. {doctor_user.name} "
-                    f"on {appointment_date} at {appointment_time}."
+                    f"You have an upcoming appointment with Dr. {doctor_user.name} within 3 hours"
+                    f"Feel free to share your issues with doctors."
                 ),
                 notification_data={
                     **reminder_payload,
