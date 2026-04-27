@@ -127,7 +127,7 @@ async def get_availabilities_by_doctor(
     total = count_result.scalar_one()
 
     query = (
-        base_query.order_by(Availability.start_date_time)
+        base_query.order_by(Availability.createdst_at.desc())
         .offset((page - 1) * size)
         .limit(size)
     )
